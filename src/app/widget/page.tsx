@@ -235,14 +235,14 @@ function WidgetContent() {
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200/70">
           <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-[11px] font-bold tracking-wider uppercase shadow-xs mb-3">
-              <Award className="w-3.5 h-3.5 text-amber-400" />
-              <span>Avis Vérifiés • Norme AFNOR NF Z74-501</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950 text-white text-[11px] font-bold tracking-wider uppercase border border-slate-800 shadow-xs mb-3">
+              <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Avis Clients Certifiés • Norme AFNOR NF Z74-501</span>
             </div>
 
             <div className="space-y-1">
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sky-600 block">
-                Pisciniste & Aménagements d'Excellence
+              <span className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-sky-600 block">
+                Savoir-faire Pisciniste & Aménagements Aquatiques
               </span>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
                 {data?.site?.nom || 'Blue 2.0'}
@@ -250,39 +250,41 @@ function WidgetContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 mt-3.5 text-xs">
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 font-bold px-3 py-1 rounded-xl border border-emerald-200">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>{tauxRecommandation}% de clients recommandent</span>
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 font-bold px-3 py-1 rounded-xl border border-emerald-200 shadow-2xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{tauxRecommandation}% de recommandations clients</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-800 font-bold px-3 py-1 rounded-xl border border-sky-200">
-                <ShieldCheck className="w-4 h-4 text-sky-600" />
+              <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-900 font-bold px-3 py-1 rounded-xl border border-sky-200 shadow-2xs">
+                <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0" />
                 <span>Contrôle & Authenticité Garantis</span>
               </span>
             </div>
           </div>
 
-          {/* Plaque Note & Avis de Prestige */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-sky-100 shadow-sm shrink-0">
+          {/* Plaque Note Globale & Avis de Prestige */}
+          <div className="flex items-center gap-5 bg-white/95 backdrop-blur-sm px-6 py-4 rounded-2xl border border-slate-200/90 shadow-sm shrink-0 self-start lg:self-center">
             <div className="text-left sm:text-right">
-              <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-1.5">
                 <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
                   {stats?.moyenne_globale ? stats.moyenne_globale.toFixed(1) : '5.0'}
                 </span>
-                <span className="text-sm font-bold text-slate-400">/ 5</span>
+                <span className="text-base font-bold text-slate-400">/ 5</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                Sur {stats?.total || rawAvisList.length} avis certifié{(stats?.total || rawAvisList.length) > 1 ? 's' : ''}
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Sur <strong className="font-bold text-slate-800">{stats?.total || rawAvisList.length} avis certifié{(stats?.total || rawAvisList.length) > 1 ? 's' : ''}</strong>
               </p>
             </div>
 
-            <div className="flex flex-col items-start sm:items-end gap-1">
-              <div className="flex items-center gap-1 text-sky-500">
+            <div className="h-10 w-px bg-slate-200 hidden sm:block" />
+
+            <div className="flex flex-col items-start gap-1">
+              <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((drop) => {
                   const active = drop <= Math.round(stats?.moyenne_globale || 5);
                   return (
                     <Droplet
                       key={drop}
-                      className={`w-6 h-6 transition-transform hover:scale-115 drop-shadow-xs ${
+                      className={`w-5 h-5 transition-transform hover:scale-110 drop-shadow-xs ${
                         active ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
                       }`}
                     />
@@ -293,16 +295,6 @@ function WidgetContent() {
                 Excellence Aquatique
               </span>
             </div>
-
-            <a
-              href={`https://blue2-avis.vercel.app/?site=${siteSlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white text-xs font-bold rounded-xl shadow-md shadow-sky-600/20 transition active:scale-95 touch-manipulation"
-            >
-              <span>Déposer un avis</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
 
@@ -675,21 +667,9 @@ function WidgetContent() {
       {/* ========================================================================= */}
       {/* 4. FOOTER OFFICIEL DU WIDGET                                             */}
       {/* ========================================================================= */}
-      <div className="mt-10 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-        <div className="flex items-center gap-2.5 text-xs text-slate-500">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Système d'avis certifié Blue 2.0 • Hébergement sécurisé & données protégées</span>
-        </div>
-
-        <a
-          href={`https://blue2-avis.vercel.app/?site=${siteSlug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1.5 transition hover:underline"
-        >
-          <span>Consulter tous les avis et mentions légales</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+      <div className="mt-8 pt-5 border-t border-slate-200/80 flex items-center justify-center gap-2.5 text-xs text-slate-500 text-center">
+        <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+        <span>Système d'avis certifié Blue 2.0 • Hébergement sécurisé & données protégées</span>
       </div>
 
       {/* ========================================================================= */}
