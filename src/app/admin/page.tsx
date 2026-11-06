@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Search,
   Filter,
-  LogOut,
   AlertTriangle,
   Download,
   Edit3,
@@ -26,19 +25,33 @@ import {
   X,
   Droplet,
   ArrowRight,
+  Trophy,
+  Medal,
+  Award,
+  Crown,
+  BarChart3,
+  Calendar,
+  Sparkles,
+  TrendingUp,
+  Camera,
+  ThumbsUp,
 } from 'lucide-react';
 import { Site, Collaborateur, Avis, CRITERIA } from '@/lib/types';
 import { resolvePhotoUrls } from '@/lib/photo-utils';
 
 export default function AdminPage() {
   // Navigation
-  const [tab, setTab] = useState<'avis' | 'sites' | 'collabs' | 'send' | 'widget'>('avis');
+  const [tab, setTab] = useState<'dashboard' | 'avis' | 'collabs' | 'sites' | 'send' | 'widget'>('dashboard');
 
   // Données
   const [avisList, setAvisList] = useState<Avis[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Filtres Dashboard / Analytics
+  const [durationFilter, setDurationFilter] = useState<'7d' | '30d' | 'month' | 'year' | 'all'>('30d');
+  const [analyticsSiteFilter, setAnalyticsSiteFilter] = useState<string>('all');
 
   // Filtres Avis
   const [filterSite, setFilterSite] = useState<string>('all');
@@ -57,6 +70,13 @@ export default function AdminPage() {
   const [editCollabSiteId, setEditCollabSiteId] = useState('');
   const [editCollabActif, setEditCollabActif] = useState(true);
   const [isSavingCollab, setIsSavingCollab] = useState(false);
+
+  // Modal / Édition Agence
+  const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [editSiteNom, setEditSiteNom] = useState('');
+  const [editSiteSlug, setEditSiteSlug] = useState('');
+  const [editSiteActif, setEditSiteActif] = useState(true);
+  const [isSavingSite, setIsSavingSite] = useState(false);
 
   // Ajout Nouveau Site / Collaborateur
   const [newSiteNom, setNewSiteNom] = useState('');
@@ -84,7 +104,11 @@ export default function AdminPage() {
   const [cronReport, setCronReport] = useState<any>(null);
   const [pingingCron, setPingingCron] = useState(false);
 
+  // Client time for safe prerendering in Next.js 16
+  const [currentTime, setCurrentTime] = useState<number>(0);
+
   useEffect(() => {
+    setCurrentTime(Date.now());
     fetchData();
   }, []);
 
@@ -305,6 +329,64 @@ export default function AdminPage() {
     }
   };
 
+  const handleStartEditSite = (site: Site) => {
+    setEditingSite(site);
+    setEditSiteNom(site.nom);
+    setEditSiteSlug(site.slug);
+    setEditSiteActif(site.actif);
+  };
+
+  const handleSaveEditSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSite || !editSiteNom.trim() || !editSiteSlug.trim()) return;
+    setIsSavingSite(true);
+    try {
+      const res = await fetch('/api/admin/sites', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingSite.id,
+          nom: editSiteNom.trim(),
+          slug: editSiteSlug.trim().toLowerCase(),
+          actif: editSiteActif,
+        }),
+      });
+      if (res.ok) {
+        await fetchData();
+        setEditingSite(null);
+      } else {
+        alert("Erreur lors de l'enregistrement de l'agence");
+      }
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setIsSavingSite(false);
+    }
+  };
+
+  const handleDeleteSite = async (site: Site) => {
+    if (
+      !confirm(
+        `Supprimer l'agence "${site.nom}" ?\n\n(Ses collaborateurs et avis existants restent conservés en base de données)`
+      )
+    )
+      return;
+    try {
+      const res = await fetch('/api/admin/sites', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: site.id, action: 'soft_delete' }),
+      });
+      if (res.ok) {
+        setSites((prev) => prev.filter((s) => s.id !== site.id));
+      } else {
+        alert("Erreur lors de la suppression de l'agence.");
+      }
+    } catch {
+      alert('Erreur réseau lors de la suppression.');
+    }
+  };
+
   // Générateur de lien questionnaire
   const handleGenerateLink = (e: React.FormEvent) => {
     e.preventDefault();
@@ -367,7 +449,170 @@ export default function AdminPage() {
   const activeAvisList = avisList.filter((a) => !a.deleted_at);
   const corbeilleAvisList = avisList.filter((a) => Boolean(a.deleted_at));
 
-  // Filtrage des avis selon le filtre statut sélectionné
+  // =========================================================================
+  // CALCULS ANALYTICS / DASHBOARD / PODIUM
+  // =========================================================================
+  const getDurationStartDate = () => {
+    if (!currentTime) return new Date(0);
+    const now = new Date(currentTime);
+    if (durationFilter === '7d') return new Date(now.getTime() - 7 * 86400000);
+    if (durationFilter === '30d') return new Date(now.getTime() - 30 * 86400000);
+    if (durationFilter === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+    if (durationFilter === 'year') return new Date(now.getFullYear(), 0, 1);
+    return new Date(0); // 'all'
+  };
+
+  const startDate = getDurationStartDate();
+
+  // Avis valides sur la période (non supprimés, approuvés)
+  const periodAvis = avisList.filter((a) => {
+    if (a.deleted_at) return false;
+    if (a.statut !== 'approuve') return false;
+    const avisDate = new Date(a.created_at);
+    return avisDate >= startDate;
+  });
+
+  // Avis filtrés par agence si sélectionnée
+  const periodAvisFiltered =
+    analyticsSiteFilter === 'all'
+      ? periodAvis
+      : periodAvis.filter((a) => a.site_id === analyticsSiteFilter);
+
+  // KPIs globaux
+  const totalReviewsPeriod = periodAvisFiltered.length;
+  const avgScorePeriod =
+    totalReviewsPeriod > 0
+      ? Math.round(
+          (periodAvisFiltered.reduce(
+            (sum, a) =>
+              sum +
+              (a.note_conseil +
+                a.note_diversite +
+                a.note_proprete +
+                a.note_engagements +
+                a.note_qualite_prix +
+                a.note_recommandation) /
+                6,
+            0
+          ) /
+            totalReviewsPeriod) *
+            10
+        ) / 10
+      : 0;
+
+  const totalRecommandes = periodAvisFiltered.filter(
+    (a) => a.note_recommandation >= 4
+  ).length;
+  const tauxRecommandation =
+    totalReviewsPeriod > 0
+      ? Math.round((totalRecommandes / totalReviewsPeriod) * 100)
+      : 0;
+
+  const totalPhotosPeriod = periodAvisFiltered.reduce(
+    (sum, a) => sum + (a.photos?.length || 0),
+    0
+  );
+
+  // Classement des Collaborateurs sur la période
+  const collabsRanked = collaborateurs
+    .filter((c) => analyticsSiteFilter === 'all' || c.site_id === analyticsSiteFilter)
+    .map((c) => {
+      const cAvis = periodAvis.filter((a) => a.collaborateur_id === c.id);
+      const count = cAvis.length;
+      const avg = (fn: (a: Avis) => number) =>
+        count > 0
+          ? Math.round((cAvis.reduce((s, a) => s + fn(a), 0) / count) * 10) / 10
+          : 0;
+
+      const moyConseil = avg((a) => a.note_conseil);
+      const moyDiversite = avg((a) => a.note_diversite);
+      const moyProprete = avg((a) => a.note_proprete);
+      const moyEngagements = avg((a) => a.note_engagements);
+      const moyQualitePrix = avg((a) => a.note_qualite_prix);
+      const moyRecommandation = avg((a) => a.note_recommandation);
+      const moyGlobale =
+        count > 0
+          ? Math.round(
+              ((moyConseil +
+                moyDiversite +
+                moyProprete +
+                moyEngagements +
+                moyQualitePrix +
+                moyRecommandation) /
+                6) *
+                10
+            ) / 10
+          : 0;
+
+      const siteObj = sites.find((s) => s.id === c.site_id);
+
+      return {
+        ...c,
+        siteNom: siteObj?.nom || 'Agence Blue 2.0',
+        siteSlug: siteObj?.slug || '',
+        periodAvisCount: count,
+        periodAvgScore: moyGlobale,
+        scores: {
+          conseil: moyConseil,
+          diversite: moyDiversite,
+          proprete: moyProprete,
+          engagements: moyEngagements,
+          qualitePrix: moyQualitePrix,
+          recommandation: moyRecommandation,
+        },
+      };
+    })
+    .sort((a, b) => {
+      if (b.periodAvisCount === 0 && a.periodAvisCount === 0) return a.nom.localeCompare(b.nom);
+      if (b.periodAvisCount === 0) return -1;
+      if (a.periodAvisCount === 0) return 1;
+      if (b.periodAvgScore !== a.periodAvgScore) return b.periodAvgScore - a.periodAvgScore;
+      return b.periodAvisCount - a.periodAvisCount;
+    });
+
+  // Classement des Agences sur la période (quand 'all' sélectionné)
+  const sitesRanked = sites
+    .map((s) => {
+      const sAvis = periodAvis.filter((a) => a.site_id === s.id);
+      const count = sAvis.length;
+      const avg = (fn: (a: Avis) => number) =>
+        count > 0
+          ? Math.round((sAvis.reduce((sum, a) => sum + fn(a), 0) / count) * 10) / 10
+          : 0;
+
+      const moyGlobale =
+        count > 0
+          ? Math.round(
+              ((avg((a) => a.note_conseil) +
+                avg((a) => a.note_diversite) +
+                avg((a) => a.note_proprete) +
+                avg((a) => a.note_engagements) +
+                avg((a) => a.note_qualite_prix) +
+                avg((a) => a.note_recommandation)) /
+                6) *
+                10
+            ) / 10
+          : 0;
+
+      const totalRec = sAvis.filter((a) => a.note_recommandation >= 4).length;
+      const tauxRec = count > 0 ? Math.round((totalRec / count) * 100) : 0;
+
+      return {
+        ...s,
+        periodAvisCount: count,
+        periodAvgScore: moyGlobale,
+        tauxRecommandation: tauxRec,
+      };
+    })
+    .sort((a, b) => {
+      if (b.periodAvisCount === 0 && a.periodAvisCount === 0) return a.nom.localeCompare(b.nom);
+      if (b.periodAvisCount === 0) return -1;
+      if (a.periodAvisCount === 0) return 1;
+      if (b.periodAvgScore !== a.periodAvgScore) return b.periodAvgScore - a.periodAvgScore;
+      return b.periodAvisCount - a.periodAvisCount;
+    });
+
+  // Filtrage des avis pour l'onglet Avis
   const filteredAvis = avisList.filter((a) => {
     if (filterStatut === 'corbeille') {
       if (!a.deleted_at) return false;
@@ -389,7 +634,7 @@ export default function AdminPage() {
     return true;
   });
 
-  // Filtrage des collaborateurs
+  // Filtrage des collaborateurs pour l'onglet Collaborateurs
   const filteredCollabs = collaborateurs.filter((c) => {
     if (collabFilterSite !== 'all' && c.site_id !== collabFilterSite) return false;
     if (collabSearchTerm) {
@@ -413,7 +658,7 @@ export default function AdminPage() {
             <div>
               <span className="font-bold text-sm sm:text-base">Admin • Blue 2.0</span>
               <span className="hidden sm:inline-block ml-2 text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                Postgres Neon & R2 opérationnels
+                Postgres Neon & R2 connectés
               </span>
             </div>
           </div>
@@ -433,6 +678,18 @@ export default function AdminPage() {
 
         {/* Tab Navigation */}
         <div className="max-w-6xl mx-auto px-4 flex items-center gap-1 overflow-x-auto border-t border-slate-800 scrollbar-none">
+          <button
+            onClick={() => setTab('dashboard')}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+              tab === 'dashboard'
+                ? 'border-sky-400 text-sky-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Dashboard & Podium</span>
+          </button>
+
           <button
             onClick={() => setTab('avis')}
             className={`py-3 px-3.5 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
@@ -462,7 +719,7 @@ export default function AdminPage() {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Collaborateurs & Statistiques</span>
+            <span>Collaborateurs & Notes</span>
             <span className="ml-1 px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-300">
               {collaborateurs.length}
             </span>
@@ -508,6 +765,437 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 pt-6">
+        {/* ========================================================= */}
+        {/* ONGLET 0 : DASHBOARD & PODIUM CLASSEMENT */}
+        {/* ========================================================= */}
+        {tab === 'dashboard' && (
+          <div className="space-y-6">
+            {/* Barre de sélection : Durée & Agences */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Sélecteur de période */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Période analysée</span>
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { id: '7d', label: '7 derniers jours' },
+                    { id: '30d', label: '30 derniers jours' },
+                    { id: 'month', label: 'Ce mois-ci' },
+                    { id: 'year', label: 'Cette année' },
+                    { id: 'all', label: 'Tout l\'historique' },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setDurationFilter(p.id as any)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+                        durationFilter === p.id
+                          ? 'bg-sky-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sélecteur d'agences */}
+              <div className="space-y-1.5 min-w-[260px]">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Building className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Périmètre géographique</span>
+                </label>
+                <select
+                  value={analyticsSiteFilter}
+                  onChange={(e) => setAnalyticsSiteFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800"
+                >
+                  <option value="all">🏆 Toutes les agences (Réseau Blue 2.0 national)</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      📍 {s.nom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 4 Cartes KPIs clés */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between text-sky-600 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Avis certifiés
+                  </span>
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                  {totalReviewsPeriod}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Sur la période sélectionnée
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between text-sky-600 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Satisfaction globale
+                  </span>
+                  <Droplet className="w-4 h-4 fill-sky-500 text-sky-500" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-sky-600 flex items-baseline gap-1">
+                  <span>{avgScorePeriod > 0 ? avgScorePeriod : '-'}</span>
+                  <span className="text-xs font-normal text-slate-400">/5</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Moyenne sur les 6 critères
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between text-emerald-600 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Recommandation
+                  </span>
+                  <ThumbsUp className="w-4 h-4" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-600">
+                  {totalReviewsPeriod > 0 ? `${tauxRecommandation}%` : '-'}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Clients prêts à recommander (≥ 4/5)
+                </p>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between text-indigo-600 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Photos chantiers
+                  </span>
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-indigo-600">
+                  {totalPhotosPeriod}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Photos HD sur Cloudflare R2
+                </p>
+              </div>
+            </div>
+
+            {/* PODIUM DES COLLABORATEURS */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-6 border-b border-slate-100">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                    <span>
+                      Podium des Collaborateurs{' '}
+                      {analyticsSiteFilter !== 'all'
+                        ? `• ${sites.find((s) => s.id === analyticsSiteFilter)?.nom}`
+                        : '• Réseau National'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Classement établi selon la note moyenne en gouttes d'eau et le nombre d'avis certifiés
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setTab('collabs')}
+                  className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                >
+                  <span>Gérer tous les collaborateurs</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Les 3 Marches du Podium */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 items-end">
+                {/* 🥈 2ème Place (Argent) */}
+                <div className="order-2 md:order-1 bg-gradient-to-b from-slate-50 via-white to-slate-50/50 rounded-3xl p-5 border border-slate-300 shadow-sm text-center relative flex flex-col justify-between min-h-[220px]">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-slate-200 text-slate-700 text-xs font-black rounded-full border border-slate-300 flex items-center gap-1 shadow-xs">
+                    <Medal className="w-3.5 h-3.5" />
+                    <span>2ème place</span>
+                  </div>
+
+                  {collabsRanked[1] ? (
+                    <div className="pt-2">
+                      <div className="w-14 h-14 mx-auto rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-black text-base shadow-inner mb-3">
+                        {collabsRanked[1].nom
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm">{collabsRanked[1].nom}</h4>
+                      <p className="text-xs text-slate-500">{collabsRanked[1].role || 'Conseiller'}</p>
+                      <p className="text-[11px] text-sky-700 font-medium mt-0.5">
+                        {collabsRanked[1].siteNom}
+                      </p>
+
+                      <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-around">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Note</span>
+                          <span className="text-base font-extrabold text-sky-600 flex items-center justify-center gap-0.5">
+                            <Droplet className="w-3.5 h-3.5 fill-sky-500 text-sky-500" />
+                            {collabsRanked[1].periodAvgScore > 0 ? collabsRanked[1].periodAvgScore : '-'}
+                          </span>
+                        </div>
+                        <div className="h-6 w-px bg-slate-200" />
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Avis</span>
+                          <span className="text-base font-extrabold text-slate-800">
+                            {collabsRanked[1].periodAvisCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-8 text-xs text-slate-400 italic">Position disponible</div>
+                  )}
+                </div>
+
+                {/* 🥇 1ère Place (Or - Au centre et plus haute) */}
+                <div className="order-1 md:order-2 bg-gradient-to-b from-amber-50 via-white to-amber-50/40 rounded-3xl p-6 border-2 border-amber-300 shadow-md text-center relative flex flex-col justify-between min-h-[250px] ring-4 ring-amber-100/50">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 text-xs font-black rounded-full border border-amber-300 flex items-center gap-1.5 shadow-sm">
+                    <Crown className="w-3.5 h-3.5 fill-amber-950" />
+                    <span>1ère place • Leader</span>
+                  </div>
+
+                  {collabsRanked[0] ? (
+                    <div className="pt-2">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-tr from-amber-300 to-amber-400 text-amber-950 flex items-center justify-center font-black text-lg shadow-md shadow-amber-500/20 mb-3 border-2 border-white">
+                        {collabsRanked[0].nom
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <h4 className="font-extrabold text-slate-900 text-base">
+                        {collabsRanked[0].nom}
+                      </h4>
+                      <p className="text-xs text-slate-500 font-medium">
+                        {collabsRanked[0].role || 'Conseiller'}
+                      </p>
+                      <p className="text-xs text-sky-800 font-bold mt-0.5">
+                        📍 {collabsRanked[0].siteNom}
+                      </p>
+
+                      <div className="mt-4 pt-3 border-t border-amber-200/80 flex items-center justify-around bg-white/70 rounded-2xl p-2 shadow-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Note moyenne</span>
+                          <span className="text-lg font-black text-sky-600 flex items-center justify-center gap-0.5">
+                            <Droplet className="w-4 h-4 fill-sky-500 text-sky-500" />
+                            {collabsRanked[0].periodAvgScore > 0 ? collabsRanked[0].periodAvgScore : '-'}
+                            <span className="text-xs text-slate-400 font-normal">/5</span>
+                          </span>
+                        </div>
+                        <div className="h-7 w-px bg-amber-200" />
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Avis reçus</span>
+                          <span className="text-lg font-black text-slate-900">
+                            {collabsRanked[0].periodAvisCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-xs text-slate-400 italic">Position disponible</div>
+                  )}
+                </div>
+
+                {/* 🥉 3ème Place (Bronze) */}
+                <div className="order-3 bg-gradient-to-b from-orange-50/60 via-white to-orange-50/30 rounded-3xl p-5 border border-orange-200 shadow-sm text-center relative flex flex-col justify-between min-h-[220px]">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-orange-100 text-orange-900 text-xs font-black rounded-full border border-orange-200 flex items-center gap-1 shadow-xs">
+                    <Award className="w-3.5 h-3.5" />
+                    <span>3ème place</span>
+                  </div>
+
+                  {collabsRanked[2] ? (
+                    <div className="pt-2">
+                      <div className="w-14 h-14 mx-auto rounded-full bg-orange-100 text-orange-800 flex items-center justify-center font-black text-base shadow-inner mb-3">
+                        {collabsRanked[2].nom
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm">{collabsRanked[2].nom}</h4>
+                      <p className="text-xs text-slate-500">{collabsRanked[2].role || 'Conseiller'}</p>
+                      <p className="text-[11px] text-sky-700 font-medium mt-0.5">
+                        {collabsRanked[2].siteNom}
+                      </p>
+
+                      <div className="mt-4 pt-3 border-t border-orange-200/60 flex items-center justify-around">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Note</span>
+                          <span className="text-base font-extrabold text-sky-600 flex items-center justify-center gap-0.5">
+                            <Droplet className="w-3.5 h-3.5 fill-sky-500 text-sky-500" />
+                            {collabsRanked[2].periodAvgScore > 0 ? collabsRanked[2].periodAvgScore : '-'}
+                          </span>
+                        </div>
+                        <div className="h-6 w-px bg-orange-200" />
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Avis</span>
+                          <span className="text-base font-extrabold text-slate-800">
+                            {collabsRanked[2].periodAvisCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-8 text-xs text-slate-400 italic">Position disponible</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* PODIUM DES AGENCES (Quand le périmètre National est sélectionné) */}
+            {analyticsSiteFilter === 'all' && (
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-4">
+                  <Building className="w-4 h-4 text-sky-600" />
+                  <span>Classement des Agences du Réseau Blue 2.0</span>
+                </h3>
+
+                <div className="divide-y divide-slate-100">
+                  {sitesRanked.map((s, idx) => (
+                    <div
+                      key={s.id}
+                      className="py-3 sm:py-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 px-2 rounded-2xl transition"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div
+                          className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs ${
+                            idx === 0
+                              ? 'bg-amber-400 text-amber-950 shadow-xs'
+                              : idx === 1
+                              ? 'bg-slate-200 text-slate-700'
+                              : idx === 2
+                              ? 'bg-orange-100 text-orange-900'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900">{s.nom}</h4>
+                          <span className="text-xs text-slate-500">
+                            {s.periodAvisCount} avis déposé(s) • Taux de recommandation :{' '}
+                            <strong>{s.tauxRecommandation}%</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className="text-base font-black text-sky-600 flex items-center justify-end gap-0.5">
+                            <Droplet className="w-4 h-4 fill-sky-500 text-sky-500" />
+                            {s.periodAvgScore > 0 ? s.periodAvgScore : '-'}
+                            <span className="text-xs text-slate-400 font-normal">/5</span>
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setAnalyticsSiteFilter(s.id);
+                          }}
+                          className="text-xs text-sky-600 font-bold hover:underline hidden sm:inline"
+                        >
+                          Filtrer cette agence
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tableau complet du classement des collaborateurs */}
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900">
+                    Tableau de classement complet des collaborateurs
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {collabsRanked.length} collaborateur(s) au total
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-100">
+                    <tr>
+                      <th className="py-3 px-4">Rang</th>
+                      <th className="py-3 px-4">Collaborateur</th>
+                      <th className="py-3 px-4">Agence</th>
+                      <th className="py-3 px-4 text-center">Avis</th>
+                      <th className="py-3 px-4 text-center">Note Globale</th>
+                      <th className="py-3 px-4 text-center">Conseil</th>
+                      <th className="py-3 px-4 text-center">Propreté</th>
+                      <th className="py-3 px-4 text-center">Engagements</th>
+                      <th className="py-3 px-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {collabsRanked.map((c, idx) => (
+                      <tr key={c.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-3 px-4 font-black">
+                          {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : `#${idx + 1}`}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900">
+                          {c.nom}
+                          <span className="block text-[11px] font-normal text-slate-400">
+                            {c.role || 'Conseiller'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 font-medium">{c.siteNom}</td>
+                        <td className="py-3 px-4 text-center font-bold text-slate-800">
+                          {c.periodAvisCount}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-black text-sky-600 inline-flex items-center gap-0.5">
+                            <Droplet className="w-3 h-3 fill-sky-500 text-sky-500" />
+                            {c.periodAvgScore > 0 ? c.periodAvgScore : '-'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center text-slate-600 font-medium">
+                          {c.scores.conseil || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-center text-slate-600 font-medium">
+                          {c.scores.proprete || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-center text-slate-600 font-medium">
+                          {c.scores.engagements || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => {
+                              setFilterCollab(c.id);
+                              setTab('avis');
+                            }}
+                            className="text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-2.5 py-1 rounded-lg transition"
+                          >
+                            Voir avis
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ========================================================= */}
         {/* ONGLET 1 : AVIS & MODERATION (AVEC CORBEILLE 7 JOURS) */}
         {/* ========================================================= */}
@@ -684,8 +1372,9 @@ export default function AdminPage() {
                   const isDeleted = Boolean(avis.deleted_at);
                   let daysRemaining = 7;
                   if (avis.deleted_at) {
+                    const nowMs = currentTime || new Date(avis.deleted_at).getTime();
                     const diffDays = Math.floor(
-                      (Date.now() - new Date(avis.deleted_at).getTime()) / (1000 * 60 * 60 * 24)
+                      (nowMs - new Date(avis.deleted_at).getTime()) / (1000 * 60 * 60 * 24)
                     );
                     daysRemaining = Math.max(1, 7 - diffDays);
                   }
@@ -1277,12 +1966,109 @@ export default function AdminPage() {
                         >
                           {site.actif ? 'Actif' : 'Inactif'}
                         </button>
+                        <button
+                          onClick={() => handleStartEditSite(site)}
+                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition"
+                          title="Modifier l'agence"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSite(site)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Supprimer l'agence"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* Modal d'édition d'une agence */}
+            {editingSite && (
+              <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
+                        <Edit3 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900">Modifier l'agence</h4>
+                        <p className="text-xs text-slate-400">{editingSite.nom}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setEditingSite(null)}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveEditSite} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Nom de l'agence
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editSiteNom}
+                        onChange={(e) => setEditSiteNom(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Slug unique (identifiant URL)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editSiteSlug}
+                        onChange={(e) => setEditSiteSlug(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2.5 pt-1">
+                      <input
+                        type="checkbox"
+                        id="siteActifCheck"
+                        checked={editSiteActif}
+                        onChange={(e) => setEditSiteActif(e.target.checked)}
+                        className="w-4 h-4 text-sky-600 rounded border-slate-300"
+                      />
+                      <label htmlFor="siteActifCheck" className="text-xs font-semibold text-slate-700">
+                        Agence active (visible dans les formulaires et widgets)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSite(null)}
+                        className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingSite}
+                        className="px-5 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-xs transition disabled:opacity-50"
+                      >
+                        {isSavingSite ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

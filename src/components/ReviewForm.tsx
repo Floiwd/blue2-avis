@@ -193,6 +193,19 @@ export function ReviewForm() {
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const triggerError = (msg: string) => {
+    setErrorMessage(msg);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (errorMessage && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [errorMessage]);
+
   // Soumission avec upload direct vers Cloudflare R2
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,27 +213,30 @@ export function ReviewForm() {
 
     // 1. Validation agence et collaborateur
     if (!selectedSiteId) {
-      setErrorMessage('Veuillez sélectionner votre agence Blue 2.0.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      triggerError('Veuillez sélectionner votre agence Blue 2.0 tout en haut.');
       return;
     }
     if (!selectedCollaborateurId) {
-      setErrorMessage('Veuillez choisir le collaborateur qui vous a accompagné.');
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      triggerError('Veuillez choisir le collaborateur qui vous a accompagné.');
       return;
     }
 
     // 2. Validation coordonnées client (Étape 2)
     if (!nom.trim() || !prenom.trim()) {
-      setErrorMessage('Veuillez renseigner votre nom et votre prénom.');
-      window.scrollTo({ top: 200, behavior: 'smooth' });
+      triggerError('Veuillez renseigner votre nom et votre prénom.');
+      return;
+    }
+
+    // Validation email si renseigné
+    if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      triggerError('L\'adresse e-mail renseignée n\'est pas valide.');
       return;
     }
 
     // 3. Validation des 6 notes
     for (const crit of CRITERIA) {
       if (!notes[crit.key] || notes[crit.key] < 1) {
-        setErrorMessage(`Veuillez attribuer une note (gouttes d'eau) pour : "${crit.label}".`);
+        triggerError(`Veuillez attribuer une note (gouttes d'eau) pour : "${crit.label}".`);
         return;
       }
     }
@@ -334,7 +350,7 @@ export function ReviewForm() {
       setIsSuccess(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      setErrorMessage(err.message || 'Une erreur inattendue est survenue.');
+      triggerError(err.message || 'Une erreur inattendue est survenue.');
     } finally {
       setIsSubmitting(false);
       setUploadProgressText('');
@@ -428,9 +444,9 @@ export function ReviewForm() {
       </header>
 
       <main className="max-w-xl mx-auto px-4 pt-5">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {errorMessage && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
+            <div id="form-error-alert" className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-semibold">Attention</p>
