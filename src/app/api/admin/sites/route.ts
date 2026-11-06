@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedAdmin } from '@/lib/auth-admin';
-import { getSupabaseAdminClient, isSupabaseConfigured, FALLBACK_SITES } from '@/lib/supabase';
-
+import { getDb, isDbConfigured, FALLBACK_SITES } from '@/lib/db';
 
 export async function GET() {
   const isAuth = await isAuthenticatedAdmin();
@@ -9,23 +8,25 @@ export async function GET() {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isDbConfigured()) {
     return NextResponse.json({ sites: FALLBACK_SITES });
   }
 
   try {
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    const { data, error } = await supabase
-      .from('sites')
-      .select('*')
-      .order('nom');
+    const rows = await sql`
+      SELECT id, slug, nom, actif, created_at, deleted_at
+      FROM sites
+      WHERE deleted_at IS NULL
+      ORDER BY nom ASC
+    `;
 
-    if (error) throw error;
-    return NextResponse.json({ sites: data || [] });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ sites: rows || [] });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Error fetching sites';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-');
 
-  if (!isSupabaseConfigured()) {
+  if (!isDbConfigured()) {
     return NextResponse.json({
       success: true,
       site: { id: 'new-' + Date.now(), nom, slug: cleanSlug, actif: true, created_at: new Date().toISOString() },
@@ -52,19 +53,19 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    const { data, error } = await supabase
-      .from('sites')
-      .insert([{ nom: nom.trim(), slug: cleanSlug, actif: true }])
-      .select()
-      .single();
+    const rows = await sql`
+      INSERT INTO sites (nom, slug, actif)
+      VALUES (${nom.trim()}, ${cleanSlug}, true)
+      RETURNING *
+    `;
 
-    if (error) throw error;
-    return NextResponse.json({ success: true, site: data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, site: rows[0] });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Error creating site';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -81,31 +82,50 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'ID requis' }, { status: 400 });
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isDbConfigured()) {
     return NextResponse.json({ success: true, id, body });
   }
 
   try {
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    const updates: Record<string, any> = {};
-    if (nom !== undefined) updates.nom = nom.trim();
-    if (slug !== undefined) updates.slug = slug.toLowerCase().trim();
-    if (actif !== undefined) updates.actif = Boolean(actif);
-    if (action === 'soft_delete') updates.deleted_at = new Date().toISOString();
-    if (action === 'restore') updates.deleted_at = null;
+    if (action === 'soft_delete') {
+      const rows = await sql`
+        UPDATE sites
+        SET deleted_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return NextResponse.json({ success: true, site: rows[0] });
+    }
 
-    const { data, error } = await supabase
-      .from('sites')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    if (action === 'restore') {
+      const rows = await sql`
+        UPDATE sites
+        SET deleted_at = NULL
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return NextResponse.json({ success: true, site: rows[0] });
+    }
 
-    if (error) throw error;
-    return NextResponse.json({ success: true, site: data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (nom !== undefined || slug !== undefined || actif !== undefined) {
+      const rows = await sql`
+        UPDATE sites
+        SET 
+          nom = COALESCE(${nom !== undefined ? nom.trim() : null}, nom),
+          slug = COALESCE(${slug !== undefined ? slug.toLowerCase().trim() : null}, slug),
+          actif = COALESCE(${actif !== undefined ? Boolean(actif) : null}, actif)
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      return NextResponse.json({ success: true, site: rows[0] });
+    }
+
+    return NextResponse.json({ success: true, message: 'Aucune modification' });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Error updating site';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

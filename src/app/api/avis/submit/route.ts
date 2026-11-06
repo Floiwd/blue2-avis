@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient, isSupabaseConfigured } from '@/lib/supabase';
+import { getDb, isDbConfigured } from '@/lib/db';
 import { checkRateLimit } from '@/lib/rate-limiter';
-
 
 export async function POST(req: NextRequest) {
   try {
@@ -89,34 +88,10 @@ export async function POST(req: NextRequest) {
 
     // 4. Traitement des clés photos Cloudflare R2 (max 8 photos)
     const sanitizedPhotos = Array.isArray(photos)
-      ? photos.slice(0, 8).map((p: any) => (typeof p === 'object' ? JSON.stringify(p) : String(p)))
+      ? photos.slice(0, 8).map((p: unknown) => (typeof p === 'object' ? p : { original: String(p) }))
       : [];
 
-    // 5. Données de l'avis
-    const newAvis = {
-      site_id,
-      collaborateur_id,
-      intitule_prestation: intitule_prestation?.trim() || null,
-      note_conseil: Number(note_conseil),
-      note_diversite: Number(note_diversite),
-      note_proprete: Number(note_proprete),
-      note_engagements: Number(note_engagements),
-      note_qualite_prix: Number(note_qualite_prix),
-      note_recommandation: Number(note_recommandation),
-      commentaire: commentaire?.trim() || null,
-      photos: sanitizedPhotos,
-      nom: nom.trim(),
-      prenom: prenom.trim(),
-      email: email?.trim() || null,
-      telephone: telephone?.trim() || null,
-      societe: societe?.trim() || null,
-      statut: 'approuve',
-      ip_hash: Buffer.from(ip).toString('base64').substring(0, 16),
-      user_agent: req.headers.get('user-agent')?.substring(0, 150) || null,
-      created_at: new Date().toISOString(),
-    };
-
-    if (!isSupabaseConfigured()) {
+    if (!isDbConfigured()) {
       return NextResponse.json({
         success: true,
         avisId: 'demo-' + Date.now(),
@@ -124,28 +99,60 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    const { data, error } = await supabase
-      .from('avis')
-      .insert([newAvis])
-      .select('id')
-      .single();
+    const result = await sql`
+      INSERT INTO avis (
+        site_id,
+        collaborateur_id,
+        intitule_prestation,
+        note_conseil,
+        note_diversite,
+        note_proprete,
+        note_engagements,
+        note_qualite_prix,
+        note_recommandation,
+        commentaire,
+        photos,
+        nom,
+        prenom,
+        email,
+        telephone,
+        societe,
+        statut
+      ) VALUES (
+        ${site_id},
+        ${collaborateur_id},
+        ${intitule_prestation?.trim() || null},
+        ${Number(note_conseil)},
+        ${Number(note_diversite)},
+        ${Number(note_proprete)},
+        ${Number(note_engagements)},
+        ${Number(note_qualite_prix)},
+        ${Number(note_recommandation)},
+        ${commentaire?.trim() || null},
+        ${JSON.stringify(sanitizedPhotos)}::jsonb,
+        ${nom.trim()},
+        ${prenom.trim()},
+        ${email?.trim() || null},
+        ${telephone?.trim() || null},
+        ${societe?.trim() || null},
+        'approuve'
+      )
+      RETURNING id
+    `;
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      throw error;
-    }
+    const avisId = result[0]?.id;
 
     return NextResponse.json({
       success: true,
-      avisId: data?.id,
+      avisId,
       message: 'Votre avis a été enregistré avec succès. Merci !',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Submission failed';
-    console.error('Error submitting avis:', message);
+    console.error('Error submitting avis to Neon:', message);
     return NextResponse.json(
       { error: 'Une erreur est survenue lors de l\'enregistrement de votre avis.' },
       { status: 500 }

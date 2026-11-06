@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdminClient, FALLBACK_SITES, FALLBACK_COLLABORATEURS, isSupabaseConfigured } from '@/lib/supabase';
-
+import { getDb, isDbConfigured, FALLBACK_SITES, FALLBACK_COLLABORATEURS } from '@/lib/db';
+import { Site, Collaborateur } from '@/lib/types';
 
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
-      // Mode fallback pré-configuré
+    if (!isDbConfigured()) {
       const sitesWithCollabs = FALLBACK_SITES.map((site) => ({
         ...site,
         collaborateurs: FALLBACK_COLLABORATEURS.filter(
@@ -15,38 +14,31 @@ export async function GET() {
       return NextResponse.json({ sites: sitesWithCollabs, source: 'fallback' });
     }
 
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) {
-      throw new Error('Supabase client unavailable');
-    }
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    const { data: sites, error: sitesError } = await supabase
-      .from('sites')
-      .select('*')
-      .is('deleted_at', null)
-      .eq('actif', true)
-      .order('nom');
+    const sites = (await sql`
+      SELECT id, slug, nom, actif, created_at
+      FROM sites
+      WHERE deleted_at IS NULL AND actif = true
+      ORDER BY nom ASC
+    `) as unknown as Site[];
 
-    if (sitesError) throw sitesError;
+    const collabs = (await sql`
+      SELECT id, site_id, nom, role, actif, created_at
+      FROM collaborateurs
+      WHERE deleted_at IS NULL AND actif = true
+      ORDER BY nom ASC
+    `) as unknown as Collaborateur[];
 
-    const { data: collabs, error: collabsError } = await supabase
-      .from('collaborateurs')
-      .select('*')
-      .is('deleted_at', null)
-      .eq('actif', true)
-      .order('nom');
-
-    if (collabsError) throw collabsError;
-
-    const sitesWithCollabs = (sites || []).map((site) => ({
+    const sitesWithCollabs = sites.map((site) => ({
       ...site,
-      collaborateurs: (collabs || []).filter((c) => c.site_id === site.id),
+      collaborateurs: collabs.filter((c) => c.site_id === site.id),
     }));
 
-    return NextResponse.json({ sites: sitesWithCollabs, source: 'supabase' });
+    return NextResponse.json({ sites: sitesWithCollabs, source: 'neon' });
   } catch (error) {
-    console.error('Error fetching sites:', error);
-    // Graceful fallback
+    console.error('Error fetching sites from Neon:', error);
     const sitesWithCollabs = FALLBACK_SITES.map((site) => ({
       ...site,
       collaborateurs: FALLBACK_COLLABORATEURS.filter(

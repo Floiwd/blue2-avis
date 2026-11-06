@@ -4,12 +4,12 @@ Application Web Progressive (PWA) mobile-first officielle pour le recueil, la ce
 
 - **Stack** : Next.js (App Router) + TypeScript + Tailwind CSS
 - **PWA** : Installable sur écran d'accueil (iOS / Android / Desktop), Service Worker offline, icônes en gouttes d'eau bleue (192, 512, maskable, apple-touch-icon).
-- **Stockage Photos Cloudflare R2** : API compatible S3 (`@aws-sdk/client-s3`), upload direct du navigateur vers R2 par URLs présignées (contourne les limites de taille Vercel). Qualité d'origine préservée (aucune compression sur le fichier original) + miniature (~800px) générée côté client pour affichage rapide. Jusqu'à 15 Mo par photo et 8 photos par avis.
-- **Base de données Supabase Postgres** : Seules les clés des fichiers sont stockées en base. Jamais de suppression physique des fichiers (Zéro perte : clés étrangères strictes `ON DELETE RESTRICT` et suppression logique `deleted_at`).
-- **Sauvegarde & Keep-Alive Vercel Cron** : Cron quotidien à 4h00 qui maintient actif le plan gratuit Supabase et exporte tous les avis, agences, collaborateurs et la liste de toutes les clés R2 vers un repo GitHub privé ou en téléchargement JSON.
+- **Base de données Neon (Serverless Postgres)** : Connexion ultra-rapide sans cold start via `@neondatabase/serverless`. Seules les clés des fichiers sont stockées en base. Jamais de suppression physique des avis (Zéro perte : clés étrangères strictes `ON DELETE RESTRICT` et suppression logique `deleted_at`).
+- **Stockage Photos Cloudflare R2** : API compatible S3 (`@aws-sdk/client-s3`), upload direct du navigateur vers R2 par URLs présignées (contourne les limites de taille Vercel). Qualité d'origine préservée (aucune compression sur le fichier original) + miniature (~800px) générée côté client pour affichage ultra-rapide sur les sites. Jusqu'à 15 Mo par photo et 8 photos par avis.
+- **Sauvegarde & Keep-Alive Vercel Cron** : Cron quotidien à 4h00 qui maintient active la base Neon et exporte tous les avis, agences, collaborateurs et la liste complète de toutes les clés R2 vers un repo GitHub privé ou en téléchargement JSON immédiat.
 - **Notation tactile** : 6 critères notés de 1 à 5 en gouttes d'eau stylisées (grandes zones tactiles).
 - **Multi-sites** : API REST avec CORS activé (`GET /api/avis?site=<slug>`) et widget d'intégration dynamique prêt à l'emploi.
-- **Admin protégé** : `/admin` sécurisé par mot de passe pour modérer les avis, gérer les agences/collaborateurs et générer des invitations directes pour tablettes de chantier.
+- **Admin** : `/admin` accessible directement pour modérer les avis, gérer les agences/collaborateurs et générer des invitations de chantier.
 
 ---
 
@@ -73,13 +73,13 @@ Pour distribuer les photos et miniatures directement via le CDN Cloudflare :
 
 ---
 
-## 🗄️ 2. Configuration Supabase (Postgres gratuit)
+## 🐘 2. Configuration Neon (PostgreSQL Serverless)
 
-1. Rendez-vous sur [supabase.com](https://supabase.com) et créez un projet gratuit.
-2. Ouvrez le **SQL Editor**.
-3. Exécutez le script [supabase/migrations/20261106_init.sql](./supabase/migrations/20261106_init.sql) pour créer les tables `sites`, `collaborateurs`, `avis` et les règles RLS.
-4. Exécutez le script [supabase/seed.sql](./supabase/seed.sql) pour charger les vraies agences du réseau Blue 2.0 (Annecy, Léman, Lyon, Clermont-Ferrand, IDF, Saint-Dié-des-Vosges, Colmar, Toulouse).
-5. Dans **Project Settings > API**, copiez l'URL du projet, la clé `anon` et la clé `service_role`.
+1. Rendez-vous sur [neon.tech](https://neon.tech) et créez un projet gratuit.
+2. Dans la console Neon, ouvrez l'onglet **SQL Editor**.
+3. Exécutez le script [database/schema.sql](./database/schema.sql) pour créer les tables `sites`, `collaborateurs` et `avis` avec contraintes et index.
+4. Exécutez le script [database/seed.sql](./database/seed.sql) pour charger les vraies agences du réseau Blue 2.0 (Annecy, Léman, Lyon, Clermont-Ferrand, IDF, Saint-Dié-des-Vosges, Colmar, Toulouse) et leurs collaborateurs.
+5. Sur la page d'accueil de votre projet Neon, copiez la chaîne de connexion sous **Connection Details** (format `postgresql://...`).
 
 ---
 
@@ -89,15 +89,13 @@ Dans votre projet Vercel (**Settings > Environment Variables**), renseignez :
 
 | Variable | Description |
 | :--- | :--- |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL de votre projet Supabase (`https://xyz.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé publique anonyme Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé secrète `service_role` Supabase |
+| `DATABASE_URL` | Chaîne de connexion Neon (`postgresql://user:pass@ep-xyz.aws.neon.tech/neondb?sslmode=require`) |
 | `R2_ACCOUNT_ID` | Account ID Cloudflare (32 caractères hexadécimaux) |
 | `R2_ACCESS_KEY_ID` | Clé d'accès R2 Token (32 caractères) |
 | `R2_SECRET_ACCESS_KEY` | Clé secrète R2 Token (64 caractères) |
 | `R2_BUCKET_NAME` | Nom du bucket (ex : `blue2-avis-photos`) |
 | `NEXT_PUBLIC_R2_PUBLIC_URL` *(recommandé)* | URL publique Cloudflare (ex : `https://pub-xxxx.r2.dev`) |
-| `ADMIN_PASSWORD` | Mot de passe pour accéder à `/admin` |
+| `ADMIN_PASSWORD` *(optionnel)* | Mot de passe pour restreindre `/admin` (vide = libre d'accès) |
 | `CRON_SECRET` | Chaîne secrète pour le cron quotidien |
 | `GITHUB_BACKUP_REPO` *(optionnel)* | Format `owner/repo` (ex: `Floiwd/blue2-avis-backups`) |
 | `GITHUB_BACKUP_TOKEN` *(optionnel)* | Personal Access Token GitHub avec scope `repo` |
@@ -106,9 +104,9 @@ Dans votre projet Vercel (**Settings > Environment Variables**), renseignez :
 
 ## 🏢 4. Ajouter une agence
 
-### Depuis l'espace `/admin` (Recommandé) :
-1. Connectez-vous sur `/admin`.
-2. Rendez-vous dans l'onglet **Agences**.
+### Depuis l'espace `/admin` :
+1. Rendez-vous sur `/admin`.
+2. Ouvrez l'onglet **Agences**.
 3. Indiquez le nom et le slug (ex : `perpignan`), puis enregistrez.
 4. Dans l'onglet **Collaborateurs**, associez les conseillers et poseurs de cette agence.
 

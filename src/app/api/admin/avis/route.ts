@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedAdmin } from '@/lib/auth-admin';
 import {
-  getSupabaseAdminClient,
-  isSupabaseConfigured,
+  getDb,
+  isDbConfigured,
   FALLBACK_AVIS,
   FALLBACK_SITES,
   FALLBACK_COLLABORATEURS,
-} from '@/lib/supabase';
-
+} from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const isAuth = await isAuthenticatedAdmin();
@@ -15,8 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   }
 
-  if (!isSupabaseConfigured()) {
-    // Mode fallback
+  if (!isDbConfigured()) {
     const enrichedAvis = FALLBACK_AVIS.map((a) => ({
       ...a,
       sites: FALLBACK_SITES.find((s) => s.id === a.site_id),
@@ -26,22 +24,24 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    const { data, error } = await supabase
-      .from('avis')
-      .select(`
-        *,
-        sites ( id, nom, slug ),
-        collaborateurs ( id, nom, role )
-      `)
-      .order('created_at', { ascending: false });
+    const rows = await sql`
+      SELECT 
+        a.*,
+        json_build_object('id', s.id, 'nom', s.nom, 'slug', s.slug) as sites,
+        json_build_object('id', c.id, 'nom', c.nom, 'role', c.role) as collaborateurs
+      FROM avis a
+      LEFT JOIN sites s ON s.id = a.site_id
+      LEFT JOIN collaborateurs c ON c.id = a.collaborateur_id
+      WHERE a.deleted_at IS NULL
+      ORDER BY a.created_at DESC
+    `;
 
-    if (error) throw error;
-
-    return NextResponse.json({ avis: data || [], count: data?.length || 0 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ avis: rows || [], count: rows?.length || 0 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Error fetching admin avis';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

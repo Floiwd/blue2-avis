@@ -1,11 +1,6 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 import { Site, Collaborateur, Avis } from './types';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-// Agences réelles Blue 2.0 (réseau officiel de concessionnaires piscinistes)
 export const FALLBACK_SITES: Site[] = [
   { id: '11111111-1111-1111-1111-111111111111', slug: 'annecy-siege', nom: 'Blue 2.0 - Annecy (Siège - Seynod)', actif: true, created_at: new Date().toISOString() },
   { id: '22222222-2222-2222-2222-222222222222', slug: 'leman-annemasse-thonon', nom: 'Blue 2.0 - Léman (Annemasse / Thonon / Juvigny)', actif: true, created_at: new Date().toISOString() },
@@ -88,27 +83,18 @@ export const FALLBACK_AVIS: Avis[] = [
   },
 ];
 
-export function isSupabaseConfigured(): boolean {
-  return Boolean(supabaseUrl && (supabaseServiceRoleKey || supabaseAnonKey));
+export function isDbConfigured(): boolean {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  return Boolean(url && url.trim().length > 0);
 }
 
-let publicClient: SupabaseClient | null = null;
-export function getSupabaseClient(): SupabaseClient | null {
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-  if (!publicClient) {
-    publicClient = createClient(supabaseUrl, supabaseAnonKey);
-  }
-  return publicClient;
-}
+let cachedSql: NeonQueryFunction<false, false> | null = null;
 
-let adminClient: SupabaseClient | null = null;
-export function getSupabaseAdminClient(): SupabaseClient | null {
-  const key = supabaseServiceRoleKey || supabaseAnonKey;
-  if (!supabaseUrl || !key) return null;
-  if (!adminClient) {
-    adminClient = createClient(supabaseUrl, key, {
-      auth: { persistSession: false },
-    });
+export function getDb(): NeonQueryFunction<false, false> | null {
+  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!databaseUrl) return null;
+  if (!cachedSql) {
+    cachedSql = neon(databaseUrl);
   }
-  return adminClient;
+  return cachedSql;
 }

@@ -1227,7 +1227,7 @@ export default function AdminPage() {
                     Zéro perte de données & Vercel Cron
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Maintien actif automatique du plan Supabase Postgres gratuit et export quotidien.
+                    Maintien actif automatique du plan Neon Postgres serverless et export quotidien avec clés Cloudflare R2.
                   </p>
                 </div>
               </div>
@@ -1238,7 +1238,7 @@ export default function AdminPage() {
                     Export manuel instantané
                   </h4>
                   <p className="text-xs text-slate-500 mb-3">
-                    Téléchargez un fichier JSON complet de tous les avis, agences et collaborateurs.
+                    Téléchargez un fichier JSON complet de tous les avis, agences, collaborateurs et clés R2.
                   </p>
                   <button
                     onClick={handleDownloadBackup}
@@ -1251,7 +1251,7 @@ export default function AdminPage() {
 
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                   <h4 className="text-xs font-bold text-slate-800 mb-1">
-                    Test Keep-Alive & Cron Supabase
+                    Test Keep-Alive & Cron Neon
                   </h4>
                   <p className="text-xs text-slate-500 mb-3">
                     Exécute la vérification automatique Vercel Cron (`/api/cron/backup-and-keepalive`).

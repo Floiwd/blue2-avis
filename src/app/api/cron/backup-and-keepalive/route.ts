@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient, isSupabaseConfigured } from '@/lib/supabase';
+import { NextRequest, NextResponse, connection } from 'next/server';
+import { getDb, isDbConfigured } from '@/lib/db';
 import { getR2Client, isR2Configured } from '@/lib/r2';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'blue2-avis-photos';
 
 export async function GET(req: NextRequest) {
+  await connection();
   try {
     // Vérification de sécurité CRON_SECRET (envoyé automatiquement par Vercel Cron)
     const authHeader = req.headers.get('authorization');
@@ -18,49 +19,42 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const report: Record<string, any> = {
+    const report: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
-      supabase_keepalive: false,
+      neon_keepalive: false,
       backup_github: false,
       total_avis: 0,
       total_r2_keys: 0,
     };
 
-    if (!isSupabaseConfigured()) {
+    if (!isDbConfigured()) {
       return NextResponse.json({
         success: true,
-        message: 'Cron exécuté (Supabase non configuré)',
+        message: 'Cron exécuté (Base Neon non configurée)',
         report,
       });
     }
 
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    // (a) Requête Keep-Alive pour réveiller et maintenir actif le projet Supabase
-    const { count: sitesCount, error: pingError } = await supabase
-      .from('sites')
-      .select('id', { count: 'exact', head: true });
-
-    if (pingError) {
-      report.keepalive_error = pingError.message;
-    } else {
-      report.supabase_keepalive = true;
-      report.sites_count = sitesCount;
-    }
+    // (a) Requête Keep-Alive pour maintenir la base Neon active
+    const pingRes = await sql`SELECT count(*) as count FROM sites WHERE deleted_at IS NULL`;
+    report.neon_keepalive = true;
+    report.sites_count = pingRes[0]?.count;
 
     // (b) Export de sauvegarde de toutes les tables (avis, collaborateurs, sites)
-    const { data: allSites } = await supabase.from('sites').select('*');
-    const { data: allCollabs } = await supabase.from('collaborateurs').select('*');
-    const { data: allAvis } = await supabase.from('avis').select('*');
+    const allSites = await sql`SELECT * FROM sites ORDER BY created_at ASC`;
+    const allCollabs = await sql`SELECT * FROM collaborateurs ORDER BY created_at ASC`;
+    const allAvis = await sql`SELECT * FROM avis ORDER BY created_at ASC`;
 
-    report.total_avis = allAvis?.length || 0;
+    report.total_avis = allAvis.length;
 
     // Extraction et inventaire de toutes les clés R2 depuis la base
     const r2KeysFromDb = new Set<string>();
-    (allAvis || []).forEach((avis: any) => {
+    allAvis.forEach((avis: Record<string, unknown>) => {
       if (Array.isArray(avis.photos)) {
-        avis.photos.forEach((item: any) => {
+        avis.photos.forEach((item: unknown) => {
           if (typeof item === 'string') {
             try {
               const parsed = JSON.parse(item);
@@ -71,14 +65,15 @@ export async function GET(req: NextRequest) {
               r2KeysFromDb.add(item);
             }
           } else if (typeof item === 'object' && item !== null) {
-            if (item.original) r2KeysFromDb.add(item.original);
-            if (item.thumbnail) r2KeysFromDb.add(item.thumbnail);
+            const obj = item as { original?: string; thumbnail?: string };
+            if (obj.original) r2KeysFromDb.add(obj.original);
+            if (obj.thumbnail) r2KeysFromDb.add(obj.thumbnail);
           }
         });
       }
     });
 
-    // Optionnel : Listing direct du bucket R2 si configuré
+    // Listing direct du bucket R2 si configuré
     let r2BucketObjects: { key: string; size?: number; lastModified?: Date }[] = [];
     if (isR2Configured()) {
       try {
@@ -97,8 +92,9 @@ export async function GET(req: NextRequest) {
             }));
           }
         }
-      } catch (err: any) {
-        console.warn('R2 listing warning in cron:', err.message);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('R2 listing warning in cron:', msg);
       }
     }
 
@@ -111,15 +107,16 @@ export async function GET(req: NextRequest) {
       metadata: {
         app: 'Formulaire avis Blue 2.0',
         version: '2.0',
-        sites_count: allSites?.length || 0,
-        collaborateurs_count: allCollabs?.length || 0,
-        avis_count: allAvis?.length || 0,
+        database: 'Neon PostgreSQL',
+        sites_count: allSites.length,
+        collaborateurs_count: allCollabs.length,
+        avis_count: allAvis.length,
         r2_photos_count: r2KeysList.length,
         r2_bucket_objects_count: r2BucketObjects.length,
       },
-      sites: allSites || [],
-      collaborateurs: allCollabs || [],
-      avis: allAvis || [],
+      sites: allSites,
+      collaborateurs: allCollabs,
+      avis: allAvis,
       r2_keys_from_db: r2KeysList,
       r2_bucket_inventory: r2BucketObjects,
     };

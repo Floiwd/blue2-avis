@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getSupabaseAdminClient,
-  isSupabaseConfigured,
+  getDb,
+  isDbConfigured,
   FALLBACK_SITES,
   FALLBACK_COLLABORATEURS,
   FALLBACK_AVIS,
-} from '@/lib/supabase';
+} from '@/lib/db';
 import { Avis } from '@/lib/types';
 import { getPhotoUrlFromKey } from '@/lib/r2';
 
@@ -22,9 +22,20 @@ export async function OPTIONS() {
   });
 }
 
-function formatPhotoKeys(rawPhotos: any[]) {
-  if (!Array.isArray(rawPhotos)) return [];
-  return rawPhotos.map((p) => {
+function formatPhotoKeys(rawPhotos: unknown) {
+  let list: unknown[] = [];
+  if (Array.isArray(rawPhotos)) {
+    list = rawPhotos;
+  } else if (typeof rawPhotos === 'string') {
+    try {
+      const parsed = JSON.parse(rawPhotos);
+      if (Array.isArray(parsed)) list = parsed;
+    } catch {
+      list = [rawPhotos];
+    }
+  }
+
+  return list.map((p) => {
     let originalKey = '';
     let thumbnailKey = '';
     if (typeof p === 'string') {
@@ -42,8 +53,9 @@ function formatPhotoKeys(rawPhotos: any[]) {
         thumbnailKey = p;
       }
     } else if (typeof p === 'object' && p !== null) {
-      originalKey = p.original || p.thumbnail;
-      thumbnailKey = p.thumbnail || p.original;
+      const obj = p as { original?: string; thumbnail?: string };
+      originalKey = obj.original || obj.thumbnail || '';
+      thumbnailKey = obj.thumbnail || obj.original || '';
     }
 
     return {
@@ -55,7 +67,14 @@ function formatPhotoKeys(rawPhotos: any[]) {
   });
 }
 
-function computeStats(avisList: Avis[]) {
+function computeStats(avisList: Array<{
+  note_conseil: number;
+  note_diversite: number;
+  note_proprete: number;
+  note_engagements: number;
+  note_qualite_prix: number;
+  note_recommandation: number;
+}>) {
   if (avisList.length === 0) {
     return {
       total: 0,
@@ -72,12 +91,12 @@ function computeStats(avisList: Avis[]) {
   const round1 = (val: number) => Math.round(val * 10) / 10;
 
   const total = avisList.length;
-  const sumConseil = avisList.reduce((acc, a) => acc + a.note_conseil, 0);
-  const sumDiversite = avisList.reduce((acc, a) => acc + a.note_diversite, 0);
-  const sumProprete = avisList.reduce((acc, a) => acc + a.note_proprete, 0);
-  const sumEngagements = avisList.reduce((acc, a) => acc + a.note_engagements, 0);
-  const sumQualitePrix = avisList.reduce((acc, a) => acc + a.note_qualite_prix, 0);
-  const sumRecommandation = avisList.reduce((acc, a) => acc + a.note_recommandation, 0);
+  const sumConseil = avisList.reduce((acc, a) => acc + Number(a.note_conseil), 0);
+  const sumDiversite = avisList.reduce((acc, a) => acc + Number(a.note_diversite), 0);
+  const sumProprete = avisList.reduce((acc, a) => acc + Number(a.note_proprete), 0);
+  const sumEngagements = avisList.reduce((acc, a) => acc + Number(a.note_engagements), 0);
+  const sumQualitePrix = avisList.reduce((acc, a) => acc + Number(a.note_qualite_prix), 0);
+  const sumRecommandation = avisList.reduce((acc, a) => acc + Number(a.note_recommandation), 0);
 
   const moyConseil = round1(sumConseil / total);
   const moyDiversite = round1(sumDiversite / total);
@@ -113,8 +132,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const siteSlug = searchParams.get('site');
 
-    // 1. Fallback mock si Supabase n'est pas encore configuré
-    if (!isSupabaseConfigured()) {
+    // 1. Fallback mock si la base Neon n'est pas encore configurée
+    if (!isDbConfigured()) {
       let matchedSite = FALLBACK_SITES[0];
       if (siteSlug && siteSlug !== 'all') {
         const found = FALLBACK_SITES.find((s) => s.slug === siteSlug);
@@ -169,63 +188,83 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 2. Query Supabase
-    const supabase = getSupabaseAdminClient();
-    if (!supabase) throw new Error('Supabase client unavailable');
+    // 2. Query Neon PostgreSQL
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
 
-    let siteData = null;
+    interface DbAvisRow {
+      id: string;
+      site_id: string;
+      collaborateur_id: string;
+      intitule_prestation: string | null;
+      note_conseil: number;
+      note_diversite: number;
+      note_proprete: number;
+      note_engagements: number;
+      note_qualite_prix: number;
+      note_recommandation: number;
+      commentaire: string | null;
+      photos: unknown;
+      nom: string;
+      prenom: string;
+      created_at: string;
+      site_slug: string;
+      site_nom: string;
+      collaborateur_nom: string;
+      collaborateur_role: string | null;
+    }
+
+    let rows: DbAvisRow[];
+    let siteInfo = { nom: 'Blue 2.0 (Toutes agences)', slug: 'all' };
+
     if (siteSlug && siteSlug !== 'all') {
-      const { data: site, error: siteErr } = await supabase
-        .from('sites')
-        .select('*')
-        .eq('slug', siteSlug)
-        .is('deleted_at', null)
-        .single();
+      const siteRows = (await sql`
+        SELECT id, slug, nom FROM sites WHERE slug = ${siteSlug} AND deleted_at IS NULL
+      `) as Array<{ id: string; slug: string; nom: string }>;
 
-      if (siteErr || !site) {
+      if (siteRows.length === 0) {
         return NextResponse.json(
           { error: `Agence introuvable pour le slug: ${siteSlug}` },
           { status: 404, headers: CORS_HEADERS }
         );
       }
-      siteData = site;
+      siteInfo = { nom: siteRows[0].nom, slug: siteRows[0].slug };
+
+      rows = (await sql`
+        SELECT 
+          a.id, a.site_id, a.collaborateur_id, a.intitule_prestation,
+          a.note_conseil, a.note_diversite, a.note_proprete, a.note_engagements, a.note_qualite_prix, a.note_recommandation,
+          a.commentaire, a.photos, a.nom, a.prenom, a.created_at,
+          s.slug as site_slug, s.nom as site_nom,
+          c.nom as collaborateur_nom, c.role as collaborateur_role
+        FROM avis a
+        JOIN sites s ON s.id = a.site_id
+        JOIN collaborateurs c ON c.id = a.collaborateur_id
+        WHERE a.statut = 'approuve' 
+          AND a.deleted_at IS NULL 
+          AND s.slug = ${siteSlug}
+        ORDER BY a.created_at DESC
+      `) as unknown as DbAvisRow[];
+    } else {
+      rows = (await sql`
+        SELECT 
+          a.id, a.site_id, a.collaborateur_id, a.intitule_prestation,
+          a.note_conseil, a.note_diversite, a.note_proprete, a.note_engagements, a.note_qualite_prix, a.note_recommandation,
+          a.commentaire, a.photos, a.nom, a.prenom, a.created_at,
+          s.slug as site_slug, s.nom as site_nom,
+          c.nom as collaborateur_nom, c.role as collaborateur_role
+        FROM avis a
+        JOIN sites s ON s.id = a.site_id
+        JOIN collaborateurs c ON c.id = a.collaborateur_id
+        WHERE a.statut = 'approuve' 
+          AND a.deleted_at IS NULL
+        ORDER BY a.created_at DESC
+      `) as unknown as DbAvisRow[];
     }
 
-    let query = supabase
-      .from('avis')
-      .select(`
-        id,
-        intitule_prestation,
-        note_conseil,
-        note_diversite,
-        note_proprete,
-        note_engagements,
-        note_qualite_prix,
-        note_recommandation,
-        commentaire,
-        photos,
-        nom,
-        prenom,
-        created_at,
-        collaborateur_id,
-        collaborateurs ( id, nom, role ),
-        sites ( id, slug, nom )
-      `)
-      .eq('statut', 'approuve')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+    const stats = computeStats(rows);
 
-    if (siteData) {
-      query = query.eq('site_id', siteData.id);
-    }
-
-    const { data: rawAvis, error: avisErr } = await query;
-    if (avisErr) throw avisErr;
-
-    const avisList: Avis[] = (rawAvis || []) as unknown as Avis[];
-    const stats = computeStats(avisList);
-
-    const formattedAvis = (rawAvis || []).map((a: any) => ({
+    const formattedAvis = rows.map((a) => ({
       id: a.id,
       prenom: a.prenom,
       initiale_nom: a.nom ? a.nom.charAt(0).toUpperCase() + '.' : '',
@@ -249,15 +288,17 @@ export async function GET(req: NextRequest) {
             10
         ) / 10,
       },
-      collaborateur: a.collaborateurs ? { nom: a.collaborateurs.nom, role: a.collaborateurs.role } : null,
-      site: a.sites ? { nom: a.sites.nom, slug: a.sites.slug } : null,
+      collaborateur: a.collaborateur_nom
+        ? { nom: a.collaborateur_nom, role: a.collaborateur_role }
+        : null,
+      site: a.site_nom ? { nom: a.site_nom, slug: a.site_slug } : null,
       commentaire: a.commentaire,
-      photos: formatPhotoKeys(a.photos || []),
+      photos: formatPhotoKeys(a.photos),
     }));
 
     return NextResponse.json(
       {
-        site: siteData ? { id: siteData.id, slug: siteData.slug, nom: siteData.nom } : { nom: 'Blue 2.0 (Global)', slug: 'all' },
+        site: siteInfo,
         stats,
         avis: formattedAvis,
       },
@@ -265,7 +306,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error fetching reviews';
-    console.error('Error in /api/avis:', message);
+    console.error('Error in /api/avis (Neon):', message);
     return NextResponse.json(
       { error: 'Erreur lors de la récupération des avis' },
       { status: 500, headers: CORS_HEADERS }
