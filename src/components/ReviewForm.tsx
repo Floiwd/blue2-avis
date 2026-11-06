@@ -418,25 +418,25 @@ export function ReviewForm() {
 
   // FORMULAIRE PRINCIPAL
   return (
-    <div className="min-h-screen bg-slate-50/70 pb-16">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-sky-100 shadow-xs px-4 py-3 sm:py-4">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-sky-600 flex items-center justify-center shadow-md shadow-sky-500/20">
+    <div className="min-h-screen bg-slate-50/70 pb-16 overflow-x-hidden w-full max-w-full">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-sky-100 shadow-xs px-4 py-3 sm:py-4 w-full max-w-full">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-sky-600 flex items-center justify-center shadow-md shadow-sky-500/20 shrink-0">
               <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">
                 Formulaire avis Blue 2.0
               </h1>
-              <p className="text-xs text-sky-600 font-medium">Votre satisfaction au cœur de l'eau</p>
+              <p className="text-[11px] sm:text-xs text-sky-600 font-medium truncate">Votre satisfaction au cœur de l'eau</p>
             </div>
           </div>
           <a
             href="/admin"
-            className="text-xs font-semibold text-slate-400 hover:text-sky-600 px-2.5 py-1.5 rounded-lg transition"
+            className="text-xs font-semibold text-slate-400 hover:text-sky-600 px-2 py-1 rounded-lg transition shrink-0"
             title="Espace administration"
           >
             Admin
@@ -444,8 +444,8 @@ export function ReviewForm() {
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto px-4 pt-5">
-        <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <main className="w-full max-w-xl mx-auto px-3 sm:px-4 pt-4 sm:pt-5 overflow-hidden">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6 w-full max-w-full">
           {errorMessage && (
             <div id="form-error-alert" className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -459,7 +459,7 @@ export function ReviewForm() {
           {/* ============================================================== */}
           {/* ÉTAPE 1 : Choix de l'agence Blue 2.0 & du collaborateur */}
           {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-4">
+          <section className="bg-white rounded-3xl p-4 sm:p-6 border border-sky-100 shadow-sm space-y-4 overflow-hidden w-full max-w-full">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
               <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
                 1
@@ -544,7 +544,7 @@ export function ReviewForm() {
           {/* ============================================================== */}
           {/* ÉTAPE 2 : Vos coordonnées (Nom, Prénom, E-mail, Tél, Société) */}
           {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-4">
+          <section className="bg-white rounded-3xl p-4 sm:p-6 border border-sky-100 shadow-sm space-y-4 overflow-hidden w-full max-w-full">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
               <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
                 2
@@ -639,7 +639,7 @@ export function ReviewForm() {
               />
             </div>
 
-            <div className="opacity-0 absolute pointer-events-none -z-50 h-0 overflow-hidden">
+            <div className="w-0 h-0 max-w-0 max-h-0 overflow-hidden absolute left-0 top-0 opacity-0 pointer-events-none -z-50">
               <label htmlFor="hp_check">Ne pas remplir</label>
               <input
                 id="hp_check"
@@ -655,7 +655,7 @@ export function ReviewForm() {
           {/* ============================================================== */}
           {/* ÉTAPE 3 : Notation 1 à 5 sur 6 critères avec GOUTTES D'EAU */}
           {/* ============================================================== */}
-          <section className="space-y-3">
+          <section className="space-y-3 w-full max-w-full overflow-hidden">
             <div className="flex items-center gap-2.5 px-2">
               <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
                 3
@@ -670,7 +670,7 @@ export function ReviewForm() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 w-full max-w-full">
               {CRITERIA.map((criterion) => (
                 <WaterDropRating
                   key={criterion.key}
@@ -688,7 +688,7 @@ export function ReviewForm() {
           {/* ============================================================== */}
           {/* ÉTAPE 4 : Commentaire libre */}
           {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-2">
+          <section className="bg-white rounded-3xl p-4 sm:p-6 border border-sky-100 shadow-sm space-y-2 overflow-hidden w-full max-w-full">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
               <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
                 4
@@ -715,7 +715,7 @@ export function ReviewForm() {
           {/* ============================================================== */}
           {/* ÉTAPE 5 : Photos Cloudflare R2 (Original brut + miniature ~800px) */}
           {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-4">
+          <section className="bg-white rounded-3xl p-4 sm:p-6 border border-sky-100 shadow-sm space-y-4 overflow-hidden w-full max-w-full">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">

@@ -32,18 +32,18 @@ export const WaterDropRating: React.FC<WaterDropRatingProps> = ({
   const activeScore = hovered !== null ? hovered : value;
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-sky-100 shadow-sm transition-all hover:border-sky-200">
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-sky-100 shadow-sm transition-all hover:border-sky-200 overflow-hidden w-full max-w-full">
       <div className="flex items-start justify-between gap-2 mb-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <label
             htmlFor={id}
-            className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5"
+            className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5 break-words"
           >
             <span>{label}</span>
             {required && <span className="text-sky-500 font-bold">*</span>}
           </label>
           {description && (
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed break-words">
               {description}
             </p>
           )}

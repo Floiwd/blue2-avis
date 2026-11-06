@@ -88,9 +88,9 @@ function WidgetContent() {
   const avisList = (data?.avis || []).slice(0, maxReviews);
 
   return (
-    <div className="font-sans antialiased bg-transparent p-3 sm:p-4 text-slate-800 max-w-5xl mx-auto">
+    <div className="font-sans antialiased bg-transparent p-3 sm:p-4 text-slate-800 max-w-5xl mx-auto w-full max-w-full overflow-x-hidden">
       {/* En-tête statistiques de l'agence */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 overflow-hidden w-full max-w-full">
         <div>
           <div className="flex items-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>

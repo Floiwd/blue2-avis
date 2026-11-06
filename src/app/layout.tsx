@@ -50,7 +50,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Avis Blue 2.0" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-slate-50 text-slate-900 selection:bg-sky-200 selection:text-sky-900`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-slate-50 text-slate-900 selection:bg-sky-200 selection:text-sky-900 overflow-x-hidden w-full max-w-full relative`}
       >
         {children}
         <ServiceWorkerRegister />

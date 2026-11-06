@@ -648,9 +648,9 @@ export default function AdminPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-20">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-20 overflow-x-hidden w-full max-w-full">
       {/* Top Navbar Admin */}
-      <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+      <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md w-full max-w-full">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-sky-500 flex items-center justify-center text-white shadow-sm">
@@ -803,7 +803,7 @@ export default function AdminPage() {
               </div>
 
               {/* Sélecteur d'agences */}
-              <div className="space-y-1.5 min-w-[260px]">
+              <div className="space-y-1.5 w-full md:w-auto md:min-w-[260px]">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Building className="w-3.5 h-3.5 text-sky-600" />
                   <span>Périmètre géographique</span>
@@ -1323,7 +1323,7 @@ export default function AdminPage() {
                 </select>
               </div>
 
-              <div className="relative min-w-[240px]">
+              <div className="relative w-full sm:w-auto sm:min-w-[240px]">
                 <input
                   type="text"
                   placeholder="Rechercher client, texte..."
@@ -1626,7 +1626,7 @@ export default function AdminPage() {
                 </select>
               </div>
 
-              <div className="relative min-w-[220px]">
+              <div className="relative w-full sm:w-auto sm:min-w-[220px]">
                 <input
                   type="text"
                   placeholder="Rechercher collaborateur..."
@@ -2363,7 +2363,7 @@ export default function AdminPage() {
                     <span>Ouvrir l'API JSON</span>
                   </a>
                 </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 font-mono text-xs text-slate-700 select-all">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 font-mono text-xs text-slate-700 select-all break-all">
                   https://blue2-avis.vercel.app/api/avis?site={widgetSiteSlug}
                 </div>
               </div>
