@@ -426,10 +426,14 @@ export function ReviewForm() {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-sky-100 shadow-xs px-4 py-3 sm:py-4 w-full max-w-full">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-sky-600 flex items-center justify-center shadow-md shadow-sky-500/20 shrink-0">
-              <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-              </svg>
+            <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-md shadow-sky-500/20 shrink-0 border border-sky-100">
+              <img
+                src="/apple-touch-icon.png"
+                alt="Logo Blue 2.0"
+                className="w-full h-full object-cover"
+                width={40}
+                height={40}
+              />
             </div>
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">
