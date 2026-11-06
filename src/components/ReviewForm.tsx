@@ -38,6 +38,13 @@ export function ReviewForm() {
   const [selectedCollaborateurId, setSelectedCollaborateurId] = useState<string>('');
   const [intitulePrestation, setIntitulePrestation] = useState<string>('');
 
+  // Identité client
+  const [nom, setNom] = useState<string>('');
+  const [prenom, setPrenom] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [telephone, setTelephone] = useState<string>('');
+  const [societe, setSociete] = useState<string>('');
+
   // 6 Notes (1..5)
   const [notes, setNotes] = useState<Record<string, number>>({
     note_conseil: 0,
@@ -55,13 +62,6 @@ export function ReviewForm() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [compressing, setCompressing] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Identité client
-  const [nom, setNom] = useState<string>('');
-  const [prenom, setPrenom] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [telephone, setTelephone] = useState<string>('');
-  const [societe, setSociete] = useState<string>('');
 
   // Anti-spam Honeypot
   const [hpWebsite, setHpWebsite] = useState<string>('');
@@ -181,18 +181,19 @@ export function ReviewForm() {
       return;
     }
 
-    // 2. Validation des 6 notes
+    // 2. Validation coordonnées client (Étape 2)
+    if (!nom.trim() || !prenom.trim()) {
+      setErrorMessage('Veuillez renseigner votre nom et votre prénom.');
+      window.scrollTo({ top: 200, behavior: 'smooth' });
+      return;
+    }
+
+    // 3. Validation des 6 notes
     for (const crit of CRITERIA) {
       if (!notes[crit.key] || notes[crit.key] < 1) {
         setErrorMessage(`Veuillez attribuer une note (gouttes d'eau) pour : "${crit.label}".`);
         return;
       }
-    }
-
-    // 3. Validation identité
-    if (!nom.trim() || !prenom.trim()) {
-      setErrorMessage('Veuillez renseigner votre nom et votre prénom.');
-      return;
     }
 
     setIsSubmitting(true);
@@ -448,161 +449,12 @@ export function ReviewForm() {
           </section>
 
           {/* ============================================================== */}
-          {/* ÉTAPE 2 : Notation 1 à 5 sur 6 critères avec GOUTTES D'EAU */}
-          {/* ============================================================== */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2.5 px-2">
-              <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
-                2
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-800">
-                  Votre évaluation (en gouttes d'eau)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Touchez les gouttes de 1 (faible) à 5 (excellent)
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {CRITERIA.map((criterion) => (
-                <WaterDropRating
-                  key={criterion.key}
-                  id={criterion.key}
-                  label={criterion.label}
-                  description={criterion.description}
-                  value={notes[criterion.key] || 0}
-                  onChange={(val) => handleNoteChange(criterion.key, val)}
-                  required
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* ============================================================== */}
-          {/* ÉTAPE 3 : Commentaire libre */}
-          {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-2">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-              <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
-                3
-              </div>
-              <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-sky-600" />
-                <span>Votre avis détaillé</span>
-              </h2>
-            </div>
-
-            <label htmlFor="commentaire-input" className="block text-xs text-slate-500 pt-1">
-              Partagez votre retour d'expérience : accueil, réactivité, déroulement des travaux, conseils reçus...
-            </label>
-            <textarea
-              id="commentaire-input"
-              rows={4}
-              value={commentaire}
-              onChange={(e) => setCommentaire(e.target.value)}
-              placeholder="Racontez-nous comment s'est déroulé votre projet avec Blue 2.0..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition resize-none"
-            />
-          </section>
-
-          {/* ============================================================== */}
-          {/* ÉTAPE 4 : Ajout de photos (compression client avant envoi) */}
-          {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
-                  4
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-sky-600" />
-                    <span>Photos du projet</span>
-                  </h2>
-                  <p className="text-xs text-slate-500">Piscine, bassin, équipements réalisés</p>
-                </div>
-              </div>
-              <span className="text-xs bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full font-semibold">
-                {photos.length} photo(s)
-              </span>
-            </div>
-
-            {/* Input file caché */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoUpload}
-            />
-
-            {/* Bouton d'ajout */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-sky-200 hover:border-sky-400 bg-sky-50/40 hover:bg-sky-50 rounded-2xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2"
-            >
-              {compressing ? (
-                <div className="flex items-center gap-2 text-sky-700 text-sm font-semibold">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Optimisation & compression des photos...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-sky-600">
-                    <Camera className="w-6 h-6" />
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-700">
-                    Prendre une photo ou importer depuis la galerie
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Compression automatique côté client pour économiser vos données
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* Aperçu des photos sélectionnées */}
-            {photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2.5 pt-2">
-                {photos.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-xs"
-                  >
-                    <img
-                      src={item.previewUrl}
-                      alt="Aperçu photo chantier"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(item.id)}
-                        className="p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
-                        title="Supprimer la photo"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-md font-mono">
-                      {item.sizeKb} Ko
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ============================================================== */}
-          {/* ÉTAPE 5 : Nom et prénom du client (e-mail & tél optionnels) */}
+          {/* ÉTAPE 2 : Vos coordonnées (Nom, Prénom, E-mail, Tél, Société) */}
           {/* ============================================================== */}
           <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
               <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
-                5
+                2
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-800">
@@ -700,6 +552,155 @@ export function ReviewForm() {
                 onChange={(e) => setHpWebsite(e.target.value)}
               />
             </div>
+          </section>
+
+          {/* ============================================================== */}
+          {/* ÉTAPE 3 : Notation 1 à 5 sur 6 critères avec GOUTTES D'EAU */}
+          {/* ============================================================== */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2.5 px-2">
+              <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
+                3
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-800">
+                  Votre évaluation (en gouttes d'eau)
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Touchez les gouttes de 1 (faible) à 5 (excellent)
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {CRITERIA.map((criterion) => (
+                <WaterDropRating
+                  key={criterion.key}
+                  id={criterion.key}
+                  label={criterion.label}
+                  description={criterion.description}
+                  value={notes[criterion.key] || 0}
+                  onChange={(val) => handleNoteChange(criterion.key, val)}
+                  required
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* ============================================================== */}
+          {/* ÉTAPE 4 : Commentaire libre */}
+          {/* ============================================================== */}
+          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-2">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+              <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
+                4
+              </div>
+              <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-sky-600" />
+                <span>Votre avis détaillé</span>
+              </h2>
+            </div>
+
+            <label htmlFor="commentaire-input" className="block text-xs text-slate-500 pt-1">
+              Partagez votre retour d'expérience : accueil, réactivité, déroulement des travaux, conseils reçus...
+            </label>
+            <textarea
+              id="commentaire-input"
+              rows={4}
+              value={commentaire}
+              onChange={(e) => setCommentaire(e.target.value)}
+              placeholder="Racontez-nous comment s'est déroulé votre projet avec Blue 2.0..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition resize-none"
+            />
+          </section>
+
+          {/* ============================================================== */}
+          {/* ÉTAPE 5 : Ajout de photos (compression client avant envoi) */}
+          {/* ============================================================== */}
+          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
+                  5
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-sky-600" />
+                    <span>Photos du projet</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">Piscine, bassin, équipements réalisés</p>
+                </div>
+              </div>
+              <span className="text-xs bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full font-semibold">
+                {photos.length} photo(s)
+              </span>
+            </div>
+
+            {/* Input file caché */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+
+            {/* Bouton d'ajout */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-sky-200 hover:border-sky-400 bg-sky-50/40 hover:bg-sky-50 rounded-2xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2"
+            >
+              {compressing ? (
+                <div className="flex items-center gap-2 text-sky-700 text-sm font-semibold">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Optimisation & compression des photos...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-sky-600">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs sm:text-sm font-semibold text-slate-700">
+                    Prendre une photo ou importer depuis la galerie
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Compression automatique côté client pour économiser vos données
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Aperçu des photos sélectionnées */}
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 gap-2.5 pt-2">
+                {photos.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-xs"
+                  >
+                    <img
+                      src={item.previewUrl}
+                      alt="Aperçu photo chantier"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(item.id)}
+                        className="p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
+                        title="Supprimer la photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-md font-mono">
+                      {item.sizeKb} Ko
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* ============================================================== */}
