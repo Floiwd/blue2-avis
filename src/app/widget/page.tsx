@@ -60,6 +60,7 @@ interface ApiResponse {
 function WidgetContent() {
   const searchParams = useSearchParams();
   const siteSlug = searchParams.get('site') || 'saint-die-vosges';
+  const frameId = searchParams.get('frameId');
   const limitParam = searchParams.get('limit');
   const maxReviews = limitParam ? parseInt(limitParam, 10) : 50;
 
@@ -89,10 +90,39 @@ function WidgetContent() {
     return () => clearInterval(interval);
   }, [siteSlug]);
 
+  // Transmission automatique de la hauteur réelle au site hôte (Zéro ascenseur sur WordPress / Wix)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const notifyParentHeight = () => {
+      const scrollH = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage(
+        {
+          type: 'blue2-widget-resize',
+          frameId: frameId || undefined,
+          height: scrollH + 16,
+        },
+        '*'
+      );
+    };
+
+    notifyParentHeight();
+    const t1 = setTimeout(notifyParentHeight, 250);
+    const t2 = setTimeout(notifyParentHeight, 800);
+    window.addEventListener('resize', notifyParentHeight);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', notifyParentHeight);
+    };
+  }, [data, filterType, showCriteriaDetail, frameId]);
+
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center font-sans">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+      <div className="p-10 flex flex-col items-center justify-center font-sans space-y-3">
+        <div className="animate-spin rounded-full h-9 w-9 border-b-2 border-sky-600"></div>
+        <p className="text-xs text-slate-400 font-medium">Chargement des avis certifiés...</p>
       </div>
     );
   }
@@ -116,14 +146,15 @@ function WidgetContent() {
   const countRecommandes = rawAvisList.filter((a) => a.notes.recommandation >= 4).length;
   const tauxRecommandation = rawAvisList.length > 0 ? Math.round((countRecommandes / rawAvisList.length) * 100) : 100;
 
-  // Google SEO Structured Data (JSON-LD)
+  // Google SEO Structured Data (JSON-LD optimisé Rich Snippets)
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
+    '@type': ['LocalBusiness', 'HomeAndConstructionBusiness'],
     '@id': `https://blue2-avis.vercel.app/#${siteSlug}`,
     name: data?.site?.nom || 'Blue 2.0',
     url: `https://blue2-avis.vercel.app/?site=${siteSlug}`,
-    description: `Avis clients vérifiés et certifiés pour ${data?.site?.nom || 'Blue 2.0'} : piscines, spas et aménagements.`,
+    inLanguage: 'fr-FR',
+    description: `Avis clients vérifiés et certifiés pour ${data?.site?.nom || 'Blue 2.0'} : construction de piscines, spas, rénovation et équipements.`,
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: stats?.moyenne_globale ? stats.moyenne_globale.toFixed(1) : '5.0',
@@ -132,14 +163,14 @@ function WidgetContent() {
       ratingCount: stats?.total || rawAvisList.length || 1,
       reviewCount: stats?.total || rawAvisList.length || 1,
     },
-    review: rawAvisList.slice(0, 15).map((a) => ({
+    review: rawAvisList.slice(0, 20).map((a) => ({
       '@type': 'Review',
       author: {
         '@type': 'Person',
         name: `${a.prenom} ${a.initiale_nom || ''}`.trim(),
       },
       datePublished: a.created_at ? a.created_at.split('T')[0] : '2026-11-06',
-      reviewBody: a.commentaire || 'Prestation piscine réalisée avec Blue 2.0.',
+      reviewBody: a.commentaire || (a.intitule_prestation ? `Prestation réalisée : ${a.intitule_prestation}` : 'Prestation piscine réalisée avec Blue 2.0.'),
       reviewRating: {
         '@type': 'Rating',
         ratingValue: a.notes?.moyenne ? a.notes.moyenne.toFixed(1) : '5',
@@ -442,24 +473,41 @@ function WidgetContent() {
         </a>
       </div>
 
-      {/* LIGHTBOX PHOTO HD PLEIN ÉCRAN */}
+      {/* LIGHTBOX PHOTO HD PLEIN ÉCRAN AVEC TÉLÉCHARGEMENT DIRECT */}
       {selectedPhoto && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
           onClick={() => setSelectedPhoto(null)}
         >
-          <div className="relative max-w-4xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setSelectedPhoto(null)}
-              className="absolute -top-10 right-0 p-2 text-white/80 hover:text-white transition"
-              title="Fermer"
-            >
-              <X className="w-6 h-6" />
-            </button>
+          <div className="relative max-w-4xl max-h-[92vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex items-center justify-between pb-2 text-white/90 text-xs font-semibold">
+              <span className="flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-white/10">
+                <Camera className="w-3.5 h-3.5 text-sky-400" />
+                <span>Photo de chantier HD (Format WebP optimisé)</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedPhoto}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-full text-xs font-bold transition flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Ouvrir en plein écran</span>
+                </a>
+                <button
+                  onClick={() => setSelectedPhoto(null)}
+                  className="p-1.5 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition"
+                  title="Fermer la vue"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
             <img
               src={selectedPhoto}
-              alt="Photo agrandie HD"
-              className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl"
+              alt="Photo de chantier agrandie HD"
+              className="max-w-full max-h-[82vh] rounded-2xl object-contain shadow-2xl border border-white/10"
             />
           </div>
         </div>
