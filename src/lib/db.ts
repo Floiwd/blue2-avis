@@ -13,33 +13,18 @@ export const FALLBACK_SITES: Site[] = [
 ];
 
 export const FALLBACK_COLLABORATEURS: Collaborateur[] = [
-  // Annecy
-  { id: 'a1111111-1111-1111-1111-111111111111', site_id: '11111111-1111-1111-1111-111111111111', nom: 'Florian Diana', role: 'Direction & Conseil Expert Piscines', actif: true, created_at: new Date().toISOString() },
-  { id: 'a1111111-1111-1111-1111-111111111112', site_id: '11111111-1111-1111-1111-111111111111', nom: 'Camille Roux', role: 'Conductrice de Travaux', actif: true, created_at: new Date().toISOString() },
-  { id: 'a1111111-1111-1111-1111-111111111113', site_id: '11111111-1111-1111-1111-111111111111', nom: 'Thomas Girard', role: 'Technicien Pose & Finitions', actif: true, created_at: new Date().toISOString() },
-
-  // Léman
-  { id: 'b2222222-2222-2222-2222-222222222221', site_id: '22222222-2222-2222-2222-222222222222', nom: 'Laurent Meunier', role: 'Responsable Agence Léman', actif: true, created_at: new Date().toISOString() },
-  { id: 'b2222222-2222-2222-2222-222222222222', site_id: '22222222-2222-2222-2222-222222222222', nom: 'Julien Dubois', role: 'Technicien Piscinier', actif: true, created_at: new Date().toISOString() },
-
-  // Lyon
-  { id: 'c3333333-3333-3333-3333-333333333331', site_id: '33333333-3333-3333-3333-333333333333', nom: 'Maxime Leroy', role: 'Chargé de Projets Lyon', actif: true, created_at: new Date().toISOString() },
-  { id: 'c3333333-3333-3333-3333-333333333332', site_id: '33333333-3333-3333-3333-333333333333', nom: 'Élodie Moreau', role: 'Conseillère technique & Design', actif: true, created_at: new Date().toISOString() },
-
-  // Clermont-Ferrand
-  { id: 'd4444444-4444-4444-4444-444444444441', site_id: '44444444-4444-4444-4444-444444444444', nom: 'Bastien Fournier', role: 'Responsable Technique Auvergne', actif: true, created_at: new Date().toISOString() },
-
-  // Île-de-France
-  { id: 'e5555555-5555-5555-5555-555555555551', site_id: '55555555-5555-5555-5555-555555555555', nom: 'Nicolas Bonnet', role: 'Directeur de projets Île-de-France', actif: true, created_at: new Date().toISOString() },
-
   // Saint-Dié-des-Vosges
-  { id: 'f6666666-6666-6666-6666-666666666661', site_id: '66666666-6666-6666-6666-666666666666', nom: 'Florian Durand', role: 'Chargé de Projets Vosges', actif: true, created_at: new Date().toISOString() },
+  { id: 'f6666666-6666-6666-6666-666666666661', site_id: '66666666-6666-6666-6666-666666666666', nom: 'Jérôme DURAND', role: 'Responsable d\'agence & Conseil', actif: true, created_at: new Date().toISOString() },
+  { id: 'f6666666-6666-6666-6666-666666666662', site_id: '66666666-6666-6666-6666-666666666666', nom: 'Ewann Magloire-Lagreve', role: 'Technicien & Conducteur de travaux', actif: true, created_at: new Date().toISOString() },
 
-  // Colmar
-  { id: 'g7777777-7777-7777-7777-777777777771', site_id: '77777777-7777-7777-7777-777777777777', nom: 'Christian Weber', role: 'Responsable Reflets d\'eau Colmar', actif: true, created_at: new Date().toISOString() },
-
-  // Toulouse
-  { id: 'h8888888-8888-8888-8888-888888888881', site_id: '88888888-8888-8888-8888-888888888888', nom: 'Matthieu Garcia', role: 'Conseiller Pisciniste Toulouse', actif: true, created_at: new Date().toISOString() },
+  // Autres agences (Collaborateurs test)
+  { id: 'a1111111-1111-1111-1111-111111111111', site_id: '11111111-1111-1111-1111-111111111111', nom: 'Test Annecy', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
+  { id: 'b2222222-2222-2222-2222-222222222221', site_id: '22222222-2222-2222-2222-222222222222', nom: 'Test Léman', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
+  { id: 'c3333333-3333-3333-3333-333333333331', site_id: '33333333-3333-3333-3333-333333333333', nom: 'Test Lyon', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
+  { id: 'd4444444-4444-4444-4444-444444444441', site_id: '44444444-4444-4444-4444-444444444444', nom: 'Test Clermont-Ferrand', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
+  { id: 'e5555555-5555-5555-5555-555555555551', site_id: '55555555-5555-5555-5555-555555555555', nom: 'Test Île-de-France', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
+  { id: 'g7777777-7777-7777-7777-777777777771', site_id: '77777777-7777-7777-7777-777777777777', nom: 'Test Colmar', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
+  { id: 'h8888888-8888-8888-8888-888888888881', site_id: '88888888-8888-8888-8888-888888888888', nom: 'Test Toulouse', role: 'Conseiller Test', actif: true, created_at: new Date().toISOString() },
 ];
 
 export const FALLBACK_AVIS: Avis[] = [
