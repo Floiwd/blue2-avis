@@ -97,8 +97,9 @@ export default function AdminPage() {
   const [generatedLink, setGeneratedLink] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Widget preview
-  const [widgetSiteSlug, setWidgetSiteSlug] = useState('annecy-siege');
+  // Widget preview & tutoriel
+  const [widgetSiteSlug, setWidgetSiteSlug] = useState('saint-die-vosges');
+  const [tutorialTab, setTutorialTab] = useState<'wordpress' | 'react' | 'webflow' | 'wix' | 'html'>('wordpress');
 
   // Keepalive test
   const [cronReport, setCronReport] = useState<any>(null);
@@ -2380,6 +2381,230 @@ export default function AdminPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Tutoriel détaillé pas-à-pas par CMS & Plateforme */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+              <div className="pb-3 border-b border-slate-100">
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <span>Tutoriel d'intégration pas-à-pas selon votre site</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Suivez le guide correspondant à la technologie de votre site web pour une intégration en 2 minutes chrono.
+                </p>
+              </div>
+
+              {/* Sélecteur de plateforme CMS */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-100 touch-pan-x">
+                {[
+                  { id: 'wordpress', label: 'WordPress (Elementor / Divi / Gutenberg)', icon: '🌐' },
+                  { id: 'react', label: 'React / Next.js (Protech Piscine)', icon: '⚛️' },
+                  { id: 'webflow', label: 'Webflow / Framer', icon: '🎨' },
+                  { id: 'wix', label: 'Wix / Squarespace', icon: '✨' },
+                  { id: 'html', label: 'HTML / PHP / Shopify', icon: '💻' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setTutorialTab(item.id as any)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                      tutorialTab === item.id
+                        ? 'bg-sky-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* CONTENU DU TUTO SELON L'ONGLET SÉLECTIONNÉ */}
+              {tutorialTab === 'wordpress' && (
+                <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                  <div className="p-4 bg-sky-50/70 border border-sky-100 rounded-2xl">
+                    <p className="font-bold text-sky-900 mb-1">
+                      WordPress : Fonctionne avec tous les thèmes et constructeurs de page
+                    </p>
+                    <p className="text-slate-600">
+                      Les avis sont chargés dynamiquement depuis le serveur Blue 2.0. Dès qu'un client dépose un avis sur Saint-Dié et qu'il est approuvé, il s'affiche automatiquement sans toucher à WordPress.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="font-bold text-slate-900 mb-1">Méthode 1 : Avec Elementor</p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                        <li>Ouvrez votre page (ex: Accueil ou page Avis) dans Elementor.</li>
+                        <li>Dans le panneau de gauche, cherchez le widget <strong>« HTML »</strong>.</li>
+                        <li>Glissez-déposez le widget à l'endroit désiré sur votre page.</li>
+                        <li>Collez le code Iframe copié plus haut (Option 1).</li>
+                        <li>Cliquez sur <strong>Mettre à jour</strong>.</li>
+                      </ol>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="font-bold text-slate-900 mb-1">Méthode 2 : Avec Gutenberg (Éditeur WordPress natif)</p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                        <li>Dans l'éditeur de page WordPress, cliquez sur le bouton <strong>+</strong> pour ajouter un bloc.</li>
+                        <li>Recherchez et sélectionnez <strong>« HTML personnalisé »</strong>.</li>
+                        <li>Collez le code Iframe ou le script JavaScript.</li>
+                        <li>Enregistrez ou publiez la page.</li>
+                      </ol>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="font-bold text-slate-900 mb-1">Méthode 3 : Avec Divi Builder</p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                        <li>Ajoutez une nouvelle rangée puis insérez un module <strong>« Code »</strong>.</li>
+                        <li>Collez le code Iframe dans le champ de contenu du module.</li>
+                        <li>Validez et sauvegardez la mise en page.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {tutorialTab === 'react' && (
+                <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+                    <p className="font-bold text-emerald-900 mb-1">
+                      Idéal pour le site Protech Piscine (Next.js / React)
+                    </p>
+                    <p className="text-emerald-800">
+                      Vous pouvez soit utiliser l'iframe responsive en 1 composant, soit consommer directement l'API JSON pour afficher les avis avec le style exact de Protech Piscine.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-bold text-slate-900 mb-1">Option A : Composant Iframe réutilisable (Le plus simple)</p>
+                      <div className="bg-slate-900 text-slate-200 p-4 rounded-2xl font-mono text-[11px] overflow-x-auto">
+                        <pre>{`// components/ReviewsWidget.tsx
+export function ReviewsWidget() {
+  return (
+    <div className="w-full max-w-5xl mx-auto my-12">
+      <iframe
+        src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}"
+        width="100%"
+        height="720"
+        style={{ border: 'none', borderRadius: '20px', overflow: 'hidden' }}
+        title="Avis Clients Protech Piscine"
+        loading="lazy"
+      />
+    </div>
+  );
+}`}</pre>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="font-bold text-slate-900 mb-1">Option B : Fetch direct de l'API JSON (Server Component Next.js App Router)</p>
+                      <div className="bg-slate-900 text-slate-200 p-4 rounded-2xl font-mono text-[11px] overflow-x-auto">
+                        <pre>{`// app/avis/page.tsx
+export default async function AvisPage() {
+  const res = await fetch('https://blue2-avis.vercel.app/api/avis?site=${widgetSiteSlug}', {
+    next: { revalidate: 60 } // Rafraîchissement automatique toutes les 60s
+  });
+  const data = await res.json();
+  const { stats, avis } = data;
+
+  return (
+    <section className="py-12 px-4 max-w-5xl mx-auto">
+      <h2>Note globale : {stats.moyenne_globale}/5 ({stats.total} avis)</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        {avis.map((a: any) => (
+          <div key={a.id} className="p-6 bg-white rounded-2xl shadow-sm border">
+            <p className="font-bold">{a.prenom} {a.initiale_nom} - Note : {a.notes.moyenne}/5</p>
+            <p className="text-slate-600 italic">"{a.commentaire}"</p>
+            {a.collaborateur && <p className="text-xs text-sky-600">Suivi par {a.collaborateur.nom}</p>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}`}</pre>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {tutorialTab === 'webflow' && (
+                <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                  <div className="p-4 bg-purple-50 border border-purple-100 rounded-2xl">
+                    <p className="font-bold text-purple-900 mb-1">
+                      Intégration Webflow & Framer via le composant Embed
+                    </p>
+                    <p className="text-purple-800">
+                      Webflow prend nativement en charge les iframes sécurisées. Le widget s'adaptera automatiquement à la largeur du conteneur parent.
+                    </p>
+                  </div>
+
+                  <ol className="list-decimal list-inside space-y-2 text-slate-600">
+                    <li>Dans le Designer Webflow, ouvrez le panneau <strong>Add Elements</strong> (raccourci clavier <strong>A</strong>).</li>
+                    <li>Faites défiler jusqu'à la section <strong>Advanced</strong> et glissez l'élément <strong>Embed</strong> sur votre page.</li>
+                    <li>Dans la fenêtre qui s'ouvre, collez le code Iframe ou le code HTML + Script.</li>
+                    <li>Cliquez sur <strong>Save & Close</strong>.</li>
+                    <li>Publiez votre projet (bouton <strong>Publish</strong>). Les avis sont maintenant synchronisés en temps réel !</li>
+                  </ol>
+                </div>
+              )}
+
+              {tutorialTab === 'wix' && (
+                <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                    <p className="font-bold text-amber-900 mb-1">
+                      Wix & Squarespace : Bloc de code personnalisé
+                    </p>
+                    <p className="text-amber-800">
+                      Aucune extension requise : les deux constructeurs proposent un bloc HTML intégré prêt à l'emploi.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="font-bold text-slate-900 mb-1">Sur Wix :</p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                        <li>Cliquez sur le bouton <strong>+ (Ajouter des éléments)</strong> à gauche.</li>
+                        <li>Allez dans <strong>Intégrer du code</strong> &gt; <strong>Intégrer du code HTML</strong>.</li>
+                        <li>Cliquez sur <strong>Entrer le code</strong> au-dessus du cadre gris qui apparaît.</li>
+                        <li>Collez le code Iframe et cliquez sur <strong>Appliquer</strong>.</li>
+                        <li>Étirez le cadre avec les poignées pour lui donner une bonne largeur et hauteur (environ 700px).</li>
+                      </ol>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="font-bold text-slate-900 mb-1">Sur Squarespace :</p>
+                      <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                        <li>Cliquez sur <strong>Modifier</strong> sur votre page.</li>
+                        <li>Ajoutez un bloc et sélectionnez <strong>« Code »</strong> ou <strong>« Embed »</strong>.</li>
+                        <li>Passez en mode <strong>HTML</strong> et collez le code Iframe.</li>
+                        <li>Enregistrez vos modifications.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {tutorialTab === 'html' && (
+                <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                  <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl">
+                    <p className="font-bold text-slate-900 mb-1">
+                      HTML Pur, PHP, Shopify (Liquid) ou Prestashop
+                    </p>
+                    <p className="text-slate-600">
+                      Pour n'importe quel site statique ou dynamique, il suffit de coller le code dans votre gabarit de page.
+                    </p>
+                  </div>
+
+                  <ol className="list-decimal list-inside space-y-2 text-slate-600">
+                    <li>Ouvrez votre fichier de vue (ex: <code>index.html</code>, <code>temoignages.php</code>, ou <code>page.liquid</code> dans Shopify).</li>
+                    <li>Collez la balise <code>&lt;iframe&gt;</code> ou le script <code>widget.js</code> à l'endroit désiré.</li>
+                    <li>Sauvegardez le fichier. Le widget est 100% autonome, responsive mobile et s'auto-actualise automatiquement.</li>
+                  </ol>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
