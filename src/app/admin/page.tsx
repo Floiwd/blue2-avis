@@ -2262,6 +2262,126 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {tab === 'widget' && (
           <div className="space-y-6">
+            {/* Intégration Widget sur site externe (ex: Protech Piscine) */}
+            <div className="bg-white rounded-3xl p-6 border border-sky-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                    <Code2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base">
+                      Intégration du Widget Avis sur votre site web
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Connectez les avis en direct (ex: Protech Piscine) avec mise à jour 100% automatique.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-600 hidden sm:inline">Agence :</label>
+                  <select
+                    value={widgetSiteSlug}
+                    onChange={(e) => setWidgetSiteSlug(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800"
+                  >
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.slug}>
+                        {s.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Option 1: Code Iframe rapide */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-600 text-white text-[11px] flex items-center justify-center font-bold">1</span>
+                    Intégration Iframe (Copier-Coller universel pour n'importe quel site)
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `<iframe src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}" width="100%" height="700" style="border:none;border-radius:16px;overflow:hidden;" title="Avis Clients Blue 2.0"></iframe>`
+                      );
+                      alert('Code Iframe copié dans le presse-papier !');
+                    }}
+                    className="text-xs text-sky-600 font-bold hover:underline flex items-center gap-1"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copier le code</span>
+                  </button>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[11px] text-sky-300 overflow-x-auto">
+                  <code>{`<iframe src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}" width="100%" height="700" style="border:none;border-radius:16px;overflow:hidden;" title="Avis Clients Blue 2.0"></iframe>`}</code>
+                </div>
+              </div>
+
+              {/* Option 2: Script JS automatique */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-600 text-white text-[11px] flex items-center justify-center font-bold">2</span>
+                    Balise HTML + Script dynamique
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `<div id="blue2-reviews" data-site="${widgetSiteSlug}"></div>\n<script src="https://blue2-avis.vercel.app/widget.js" async></script>`
+                      );
+                      alert('Script copié !');
+                    }}
+                    className="text-xs text-sky-600 font-bold hover:underline flex items-center gap-1"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copier le script</span>
+                  </button>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[11px] text-emerald-300 overflow-x-auto">
+                  <code>{`<div id="blue2-reviews" data-site="${widgetSiteSlug}"></div>\n<script src="https://blue2-avis.vercel.app/widget.js" async></script>`}</code>
+                </div>
+              </div>
+
+              {/* Option 3: API JSON directe */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-600 text-white text-[11px] flex items-center justify-center font-bold">3</span>
+                    API JSON Directe (Pour React / Next.js / WordPress / PHP)
+                  </span>
+                  <a
+                    href={`https://blue2-avis.vercel.app/api/avis?site=${widgetSiteSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-sky-600 font-bold hover:underline flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Ouvrir l'API JSON</span>
+                  </a>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 font-mono text-xs text-slate-700 select-all">
+                  https://blue2-avis.vercel.app/api/avis?site={widgetSiteSlug}
+                </div>
+              </div>
+
+              {/* Aperçu direct */}
+              <div className="pt-4 border-t border-slate-100">
+                <h4 className="text-xs font-bold text-slate-800 mb-2">Aperçu en direct du widget :</h4>
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 p-2">
+                  <iframe
+                    src={`/widget?site=${widgetSiteSlug}`}
+                    width="100%"
+                    height="450"
+                    className="rounded-xl bg-white shadow-xs"
+                    title="Aperçu Widget"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">

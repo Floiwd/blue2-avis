@@ -70,6 +70,7 @@ export function getPhotoUrlFromKey(key: string): string {
     const base = R2_PUBLIC_URL.replace(/\/$/, '');
     return `${base}/${key.replace(/^\//, '')}`;
   }
-  // Route proxy Next.js si aucun domaine public R2 n'est configuré
-  return `/api/photos/${encodeURIComponent(key)}`;
+  // Route proxy Next.js avec URL absolue pour affichage sur d'autres sites (ex: Protech Piscine)
+  const appBase = process.env.NEXT_PUBLIC_APP_URL || 'https://blue2-avis.vercel.app';
+  return `${appBase.replace(/\/$/, '')}/api/photos/${encodeURIComponent(key)}`;
 }
