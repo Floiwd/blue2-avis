@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Shield,
-  Lock,
   Building,
   Users,
   MessageSquare,
@@ -12,7 +11,6 @@ import {
   Database,
   CheckCircle,
   EyeOff,
-  Eye,
   Trash2,
   Plus,
   RefreshCw,
@@ -21,42 +19,53 @@ import {
   Search,
   Filter,
   LogOut,
-  ChevronRight,
   AlertTriangle,
   Download,
+  Edit3,
+  RotateCcw,
+  X,
+  Droplet,
+  ArrowRight,
 } from 'lucide-react';
 import { Site, Collaborateur, Avis, CRITERIA } from '@/lib/types';
 import { resolvePhotoUrls } from '@/lib/photo-utils';
 
 export default function AdminPage() {
-  // Auth state : mot de passe temporairement désactivé pour accès direct
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  // Active Tab: 'avis' | 'sites' | 'collabs' | 'send' | 'widget'
+  // Navigation
   const [tab, setTab] = useState<'avis' | 'sites' | 'collabs' | 'send' | 'widget'>('avis');
 
-  // Data
+  // Données
   const [avisList, setAvisList] = useState<Avis[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Filters for avis
+  // Filtres Avis
   const [filterSite, setFilterSite] = useState<string>('all');
-  const [filterStatut, setFilterStatut] = useState<string>('all');
+  const [filterCollab, setFilterCollab] = useState<string>('all');
+  const [filterStatut, setFilterStatut] = useState<string>('all'); // 'all' | 'approuve' | 'masque' | 'en_attente' | 'corbeille'
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Modals / Form States for Add Site / Collab
+  // Filtres Collaborateurs
+  const [collabFilterSite, setCollabFilterSite] = useState<string>('all');
+  const [collabSearchTerm, setCollabSearchTerm] = useState<string>('');
+
+  // Modal / Édition Collaborateur
+  const [editingCollab, setEditingCollab] = useState<Collaborateur | null>(null);
+  const [editCollabNom, setEditCollabNom] = useState('');
+  const [editCollabRole, setEditCollabRole] = useState('');
+  const [editCollabSiteId, setEditCollabSiteId] = useState('');
+  const [editCollabActif, setEditCollabActif] = useState(true);
+  const [isSavingCollab, setIsSavingCollab] = useState(false);
+
+  // Ajout Nouveau Site / Collaborateur
   const [newSiteNom, setNewSiteNom] = useState('');
   const [newSiteSlug, setNewSiteSlug] = useState('');
   const [newCollabNom, setNewCollabNom] = useState('');
   const [newCollabRole, setNewCollabRole] = useState('Conseiller Expert Piscines & Spas');
   const [newCollabSiteId, setNewCollabSiteId] = useState('');
 
-  // "Envoyer un questionnaire" (Inspiré des captures utilisateur)
+  // Envoyer un questionnaire
   const [sendSiteId, setSendSiteId] = useState('');
   const [sendCollabId, setSendCollabId] = useState('');
   const [sendNom, setSendNom] = useState('');
@@ -68,14 +77,13 @@ export default function AdminPage() {
   const [generatedLink, setGeneratedLink] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Widget preview site selection
-  const [widgetSiteSlug, setWidgetSiteSlug] = useState('lyon-centre');
+  // Widget preview
+  const [widgetSiteSlug, setWidgetSiteSlug] = useState('annecy-siege');
 
-  // Keepalive trigger status
+  // Keepalive test
   const [cronReport, setCronReport] = useState<any>(null);
   const [pingingCron, setPingingCron] = useState(false);
 
-  // Check auth initial
   useEffect(() => {
     fetchData();
   }, []);
@@ -89,7 +97,6 @@ export default function AdminPage() {
         fetch('/api/admin/collaborateurs'),
       ]);
 
-      setIsAuthenticated(true);
       const dataAvis = await resAvis.json();
       const dataSites = await resSites.json();
       const dataCollabs = await resCollabs.json();
@@ -104,41 +111,10 @@ export default function AdminPage() {
         if (!widgetSiteSlug) setWidgetSiteSlug(dataSites.sites[0].slug);
       }
     } catch (err) {
-      console.error(err);
-      setIsAuthenticated(false);
+      console.error('Error fetching admin data:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    setIsLoggingIn(true);
-    try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        setIsAuthenticated(true);
-        fetchData();
-      } else {
-        const d = await res.json();
-        setLoginError(d.error || 'Mot de passe incorrect');
-      }
-    } catch (err) {
-      setLoginError('Erreur de connexion');
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await fetch('/api/admin/logout', { method: 'POST' });
-    setIsAuthenticated(false);
-    setPassword('');
   };
 
   // Actions Avis
@@ -154,13 +130,13 @@ export default function AdminPage() {
           prev.map((a) => (a.id === id ? { ...a, statut } : a))
         );
       }
-    } catch (err) {
-      alert('Erreur lors de la mise à jour');
+    } catch {
+      alert('Erreur lors de la mise à jour du statut');
     }
   };
 
   const handleSoftDeleteAvis = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir archiver cet avis ? (Zéro perte : il reste récupérable)')) return;
+    if (!confirm('Déplacer cet avis dans la corbeille ? Il sera conservé pendant 7 jours et restera facilement récupérable d\'un simple clic.')) return;
     try {
       const res = await fetch(`/api/admin/avis/${id}`, {
         method: 'PATCH',
@@ -171,73 +147,67 @@ export default function AdminPage() {
         setAvisList((prev) =>
           prev.map((a) => (a.id === id ? { ...a, deleted_at: new Date().toISOString() } : a))
         );
+        fetchData();
       }
-    } catch (err) {
-      alert('Erreur lors de l\'archivage');
+    } catch {
+      alert('Erreur lors du déplacement dans la corbeille');
     }
   };
 
-  // Actions Sites
-  const handleAddSite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSiteNom || !newSiteSlug) return;
+  const handleRestoreAvis = async (id: string) => {
     try {
-      const res = await fetch('/api/admin/sites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom: newSiteNom, slug: newSiteSlug }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSites((prev) => [...prev, data.site]);
-        setNewSiteNom('');
-        setNewSiteSlug('');
-        alert('Agence ajoutée avec succès !');
-      }
-    } catch (err) {
-      alert('Erreur lors de l\'ajout');
-    }
-  };
-
-  const handleToggleSite = async (site: Site) => {
-    try {
-      const res = await fetch('/api/admin/sites', {
+      const res = await fetch(`/api/admin/avis/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: site.id, actif: !site.actif }),
+        body: JSON.stringify({ action: 'restore', statut: 'approuve' }),
       });
       if (res.ok) {
-        setSites((prev) =>
-          prev.map((s) => (s.id === site.id ? { ...s, actif: !s.actif } : s))
+        setAvisList((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, deleted_at: null, statut: 'approuve' } : a))
         );
+        alert('Avis restauré avec succès ! Il est de nouveau en ligne.');
+        fetchData();
       }
-    } catch (err) {
-      alert('Erreur');
+    } catch {
+      alert('Erreur lors de la restauration de l\'avis');
     }
   };
 
-  // Actions Collaborateurs
-  const handleAddCollaborateur = async (e: React.FormEvent) => {
+  // Actions Collaborateurs (Modification)
+  const handleStartEditCollab = (c: Collaborateur) => {
+    setEditingCollab(c);
+    setEditCollabNom(c.nom);
+    setEditCollabRole(c.role || '');
+    setEditCollabSiteId(c.site_id);
+    setEditCollabActif(c.actif);
+  };
+
+  const handleSaveEditCollab = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCollabNom || !newCollabSiteId) return;
+    if (!editingCollab || !editCollabNom.trim()) return;
+    setIsSavingCollab(true);
     try {
       const res = await fetch('/api/admin/collaborateurs', {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nom: newCollabNom,
-          role: newCollabRole,
-          site_id: newCollabSiteId,
+          id: editingCollab.id,
+          nom: editCollabNom.trim(),
+          role: editCollabRole.trim(),
+          site_id: editCollabSiteId,
+          actif: editCollabActif,
         }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setCollaborateurs((prev) => [...prev, data.collaborateur]);
-        setNewCollabNom('');
-        alert('Collaborateur ajouté avec succès !');
+        await fetchData();
+        setEditingCollab(null);
+      } else {
+        alert('Erreur lors de l\'enregistrement des modifications');
       }
-    } catch (err) {
-      alert('Erreur');
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setIsSavingCollab(false);
     }
   };
 
@@ -253,50 +223,113 @@ export default function AdminPage() {
           prev.map((c) => (c.id === collab.id ? { ...c, actif: !c.actif } : c))
         );
       }
-    } catch (err) {
+    } catch {
       alert('Erreur');
     }
   };
 
-  // Génération du lien de questionnaire
-  const handleGenerateLink = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleDeleteCollab = async (collab: Collaborateur) => {
+    if (!confirm(`Supprimer le collaborateur ${collab.nom} ? (Suppression logique)`)) return;
+    try {
+      const res = await fetch('/api/admin/collaborateurs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: collab.id, action: 'soft_delete' }),
+      });
+      if (res.ok) {
+        setCollaborateurs((prev) => prev.filter((c) => c.id !== collab.id));
+      }
+    } catch {
+      alert('Erreur lors de la suppression');
+    }
+  };
+
+  const handleAddCollaborateur = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCollabNom.trim() || !newCollabSiteId) return;
+    try {
+      const res = await fetch('/api/admin/collaborateurs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: newCollabNom.trim(),
+          role: newCollabRole.trim(),
+          site_id: newCollabSiteId,
+        }),
+      });
+      if (res.ok) {
+        setNewCollabNom('');
+        await fetchData();
+        alert('Collaborateur ajouté avec succès !');
+      }
+    } catch {
+      alert('Erreur lors de l\'ajout');
+    }
+  };
+
+  // Actions Sites
+  const handleAddSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSiteNom.trim() || !newSiteSlug.trim()) return;
+    try {
+      const res = await fetch('/api/admin/sites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: newSiteNom.trim(), slug: newSiteSlug.trim() }),
+      });
+      if (res.ok) {
+        setNewSiteNom('');
+        setNewSiteSlug('');
+        await fetchData();
+        alert('Agence ajoutée avec succès !');
+      }
+    } catch {
+      alert('Erreur lors de l\'ajout de l\'agence');
+    }
+  };
+
+  const handleToggleSite = async (site: Site) => {
+    try {
+      const res = await fetch('/api/admin/sites', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: site.id, actif: !site.actif }),
+      });
+      if (res.ok) {
+        setSites((prev) =>
+          prev.map((s) => (s.id === site.id ? { ...s, actif: !s.actif } : s))
+        );
+      }
+    } catch {
+      alert('Erreur');
+    }
+  };
+
+  // Générateur de lien questionnaire
+  const handleGenerateLink = (e: React.FormEvent) => {
+    e.preventDefault();
     const siteObj = sites.find((s) => s.id === sendSiteId);
-    const collabObj = collaborateurs.find((c) => c.id === sendCollabId);
-
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const params = new URLSearchParams();
-
-    if (siteObj) params.set('site', siteObj.slug);
-    if (collabObj) params.set('collab', collabObj.id);
-    if (sendPrestation) params.set('prestation', sendPrestation);
+    if (siteObj?.slug) params.set('site', siteObj.slug);
+    if (sendCollabId) params.set('collab', sendCollabId);
     if (sendNom) params.set('nom', sendNom);
     if (sendPrenom) params.set('prenom', sendPrenom);
     if (sendEmail) params.set('email', sendEmail);
+    if (sendTel) params.set('tel', sendTel);
+    if (sendSociete) params.set('societe', sendSociete);
+    if (sendPrestation) params.set('prestation', sendPrestation);
 
-    const link = `${baseUrl}/?${params.toString()}`;
+    const base = typeof window !== 'undefined' ? window.location.origin : 'https://blue2-avis.vercel.app';
+    const link = `${base}/?${params.toString()}`;
     setGeneratedLink(link);
+    setCopySuccess(false);
   };
 
-  const copyLink = () => {
+  const handleCopyLink = () => {
     if (!generatedLink) return;
     navigator.clipboard.writeText(generatedLink);
     setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2500);
-  };
-
-  // Trigger Keepalive & backup
-  const handleTriggerKeepalive = async () => {
-    setPingingCron(true);
-    try {
-      const res = await fetch('/api/cron/backup-and-keepalive');
-      const data = await res.json();
-      setCronReport(data);
-    } catch (err) {
-      alert('Erreur lors du ping');
-    } finally {
-      setPingingCron(false);
-    }
+    setTimeout(() => setCopySuccess(false), 3000);
   };
 
   // Télécharger JSON de sauvegarde
@@ -316,10 +349,36 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Filtrage des avis
+  // Test keepalive
+  const handleTriggerKeepalive = async () => {
+    setPingingCron(true);
+    try {
+      const res = await fetch('/api/cron/backup-and-keepalive');
+      const data = await res.json();
+      setCronReport(data);
+    } catch (err: any) {
+      setCronReport({ error: err.message });
+    } finally {
+      setPingingCron(false);
+    }
+  };
+
+  // Séparation Avis Actifs vs Corbeille
+  const activeAvisList = avisList.filter((a) => !a.deleted_at);
+  const corbeilleAvisList = avisList.filter((a) => Boolean(a.deleted_at));
+
+  // Filtrage des avis selon le filtre statut sélectionné
   const filteredAvis = avisList.filter((a) => {
+    if (filterStatut === 'corbeille') {
+      if (!a.deleted_at) return false;
+    } else {
+      if (a.deleted_at) return false;
+      if (filterStatut !== 'all' && a.statut !== filterStatut) return false;
+    }
+
     if (filterSite !== 'all' && a.site_id !== filterSite) return false;
-    if (filterStatut !== 'all' && a.statut !== filterStatut) return false;
+    if (filterCollab !== 'all' && a.collaborateur_id !== filterCollab) return false;
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const matchNom = a.nom.toLowerCase().includes(term) || a.prenom.toLowerCase().includes(term);
@@ -330,19 +389,31 @@ export default function AdminPage() {
     return true;
   });
 
+  // Filtrage des collaborateurs
+  const filteredCollabs = collaborateurs.filter((c) => {
+    if (collabFilterSite !== 'all' && c.site_id !== collabFilterSite) return false;
+    if (collabSearchTerm) {
+      const term = collabSearchTerm.toLowerCase();
+      const matchNom = c.nom.toLowerCase().includes(term);
+      const matchRole = c.role?.toLowerCase().includes(term) || false;
+      if (!matchNom && !matchRole) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 pb-20">
       {/* Top Navbar Admin */}
       <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-sky-500 flex items-center justify-center text-white">
+            <div className="w-8 h-8 rounded-xl bg-sky-500 flex items-center justify-center text-white shadow-sm">
               <Shield className="w-4 h-4" />
             </div>
             <div>
               <span className="font-bold text-sm sm:text-base">Admin • Blue 2.0</span>
               <span className="hidden sm:inline-block ml-2 text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                Accès direct libre (sans mot de passe)
+                Postgres Neon & R2 opérationnels
               </span>
             </div>
           </div>
@@ -357,13 +428,6 @@ export default function AdminPage() {
               <span>Voir le formulaire public</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
-            <button
-              onClick={handleLogout}
-              className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/10 transition"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Déconnexion</span>
-            </button>
           </div>
         </div>
 
@@ -378,7 +442,30 @@ export default function AdminPage() {
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            <span>Avis reçus ({avisList.length})</span>
+            <span>Avis & Modération</span>
+            <span className="ml-1 px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-300">
+              {activeAvisList.length}
+            </span>
+            {corbeilleAvisList.length > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                {corbeilleAvisList.length} corbeille
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setTab('collabs')}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
+              tab === 'collabs'
+                ? 'border-sky-400 text-sky-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Collaborateurs & Statistiques</span>
+            <span className="ml-1 px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-300">
+              {collaborateurs.length}
+            </span>
           </button>
 
           <button
@@ -394,18 +481,6 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => setTab('collabs')}
-            className={`py-3 px-3.5 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
-              tab === 'collabs'
-                ? 'border-sky-400 text-sky-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Collaborateurs ({collaborateurs.length})</span>
-          </button>
-
-          <button
             onClick={() => setTab('send')}
             className={`py-3 px-3.5 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 whitespace-nowrap transition ${
               tab === 'send'
@@ -413,8 +488,8 @@ export default function AdminPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Send className="w-4 h-4 text-orange-400" />
-            <span className="text-orange-300 font-bold">Envoyer un questionnaire</span>
+            <Send className="w-4 h-4" />
+            <span>Envoyer un questionnaire</span>
           </button>
 
           <button
@@ -434,16 +509,101 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 pt-6">
         {/* ========================================================= */}
-        {/* ONGLET 1 : AVIS & MODERATION */}
+        {/* ONGLET 1 : AVIS & MODERATION (AVEC CORBEILLE 7 JOURS) */}
         {/* ========================================================= */}
         {tab === 'avis' && (
           <div className="space-y-4">
-            {/* Filtres & Recherche */}
+            {/* Barre de filtres rapides Statuts */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl p-3 border border-slate-200 shadow-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setFilterStatut('all')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+                    filterStatut === 'all'
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Tous les avis actifs ({activeAvisList.length})
+                </button>
+                <button
+                  onClick={() => setFilterStatut('approuve')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+                    filterStatut === 'approuve'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Approuvés ({activeAvisList.filter((a) => a.statut === 'approuve').length})
+                </button>
+                <button
+                  onClick={() => setFilterStatut('en_attente')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+                    filterStatut === 'en_attente'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  En attente ({activeAvisList.filter((a) => a.statut === 'en_attente').length})
+                </button>
+                <button
+                  onClick={() => setFilterStatut('masque')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+                    filterStatut === 'masque'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Masqués ({activeAvisList.filter((a) => a.statut === 'masque').length})
+                </button>
+                <button
+                  onClick={() => setFilterStatut('corbeille')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition ${
+                    filterStatut === 'corbeille'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Corbeille ({corbeilleAvisList.length})</span>
+                </button>
+              </div>
+
+              {/* Filtre collaborateur actif si sélectionné */}
+              {filterCollab !== 'all' && (
+                <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 text-sky-800 px-3 py-1 rounded-xl text-xs">
+                  <span>Filtré par collaborateur</span>
+                  <button
+                    onClick={() => setFilterCollab('all')}
+                    className="font-bold hover:text-sky-950 ml-1"
+                  >
+                    × Tout afficher
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bannière explicative pour la Corbeille */}
+            {filterStatut === 'corbeille' && (
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-900 text-xs">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-sm text-rose-950 mb-0.5">
+                    Corbeille de rétention (7 jours)
+                  </p>
+                  <p className="text-rose-700 leading-relaxed">
+                    Les avis supprimés sont conservés ici pendant 1 semaine avant purge définitive. Vous pouvez les restaurer d'un simple clic sur le bouton vert <strong>« Restaurer l'avis »</strong> à tout moment.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Filtres secondaires : Agence & Recherche */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
               <div className="flex flex-wrap items-center gap-2.5">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-semibold text-slate-500">Filtrer :</span>
+                  <span className="text-xs font-semibold text-slate-500">Filtrer par agence :</span>
                 </div>
                 <select
                   value={filterSite}
@@ -459,14 +619,18 @@ export default function AdminPage() {
                 </select>
 
                 <select
-                  value={filterStatut}
-                  onChange={(e) => setFilterStatut(e.target.value)}
+                  value={filterCollab}
+                  onChange={(e) => setFilterCollab(e.target.value)}
                   className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700"
                 >
-                  <option value="all">Tous statuts</option>
-                  <option value="approuve">Approuvés uniquement</option>
-                  <option value="masque">Masqués</option>
-                  <option value="en_attente">En attente</option>
+                  <option value="all">Tous les collaborateurs</option>
+                  {collaborateurs
+                    .filter((c) => filterSite === 'all' || c.site_id === filterSite)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nom}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -486,13 +650,20 @@ export default function AdminPage() {
             {filteredAvis.length === 0 ? (
               <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 text-slate-400">
                 <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                <p className="font-semibold text-sm">Aucun avis correspondant</p>
-                <p className="text-xs mt-1">Modifiez vos filtres ou effectuez un test via le formulaire public.</p>
+                <p className="font-semibold text-sm">
+                  {filterStatut === 'corbeille' ? 'La corbeille est vide.' : 'Aucun avis correspondant'}
+                </p>
+                <p className="text-xs mt-1">
+                  {filterStatut === 'corbeille'
+                    ? 'Aucun avis n\'a été supprimé récemment.'
+                    : 'Modifiez vos filtres ou effectuez un test via le formulaire public.'}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredAvis.map((avis) => {
-                  const siteName = sites.find((s) => s.id === avis.site_id)?.nom || (avis.sites as any)?.nom;
+                  const siteName =
+                    sites.find((s) => s.id === avis.site_id)?.nom || (avis.sites as any)?.nom;
                   const collabName =
                     collaborateurs.find((c) => c.id === avis.collaborateur_id)?.nom ||
                     (avis.collaborateurs as any)?.nom;
@@ -509,12 +680,22 @@ export default function AdminPage() {
                         10
                     ) / 10;
 
+                  // Calcul jours restants dans la corbeille
+                  const isDeleted = Boolean(avis.deleted_at);
+                  let daysRemaining = 7;
+                  if (avis.deleted_at) {
+                    const diffDays = Math.floor(
+                      (Date.now() - new Date(avis.deleted_at).getTime()) / (1000 * 60 * 60 * 24)
+                    );
+                    daysRemaining = Math.max(1, 7 - diffDays);
+                  }
+
                   return (
                     <div
                       key={avis.id}
                       className={`bg-white rounded-3xl p-5 border shadow-sm flex flex-col justify-between transition ${
-                        avis.deleted_at
-                          ? 'opacity-50 border-rose-200 bg-rose-50/20'
+                        isDeleted
+                          ? 'border-rose-300 bg-rose-50/20 ring-1 ring-rose-200'
                           : avis.statut === 'masque'
                           ? 'border-amber-200 bg-amber-50/20'
                           : 'border-slate-200'
@@ -528,73 +709,57 @@ export default function AdminPage() {
                               <h3 className="font-bold text-slate-900 text-sm">
                                 {avis.prenom} {avis.nom}
                               </h3>
-                              {avis.statut === 'approuve' ? (
-                                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              {isDeleted ? (
+                                <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full border border-rose-200">
+                                  Dans la corbeille (expire dans {daysRemaining}j)
+                                </span>
+                              ) : avis.statut === 'approuve' ? (
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
                                   Approuvé
                                 </span>
                               ) : avis.statut === 'masque' ? (
-                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-200">
                                   Masqué
                                 </span>
                               ) : (
-                                <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full border border-sky-200">
                                   En attente
                                 </span>
                               )}
-                              {avis.deleted_at && (
-                                <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                  Archivé
-                                </span>
-                              )}
                             </div>
-                            <p className="text-xs text-sky-700 font-medium mt-0.5">
-                              {siteName} • Accompagné par {collabName || 'un collaborateur'}
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {siteName} • Collaborateur :{' '}
+                              <strong className="text-slate-700">{collabName || 'Non assigné'}</strong>
                             </p>
                           </div>
 
                           <div className="text-right">
-                            <span className="text-base font-extrabold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-xl border border-sky-100">
-                              💧 {average}/5
-                            </span>
-                            <p className="text-[10px] text-slate-400 mt-1">
+                            <div className="text-base font-extrabold text-sky-600 flex items-center gap-0.5 justify-end">
+                              <Droplet className="w-4 h-4 fill-sky-500 text-sky-500" />
+                              <span>{average}</span>
+                              <span className="text-xs text-slate-400 font-normal">/5</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400">
                               {new Date(avis.created_at).toLocaleDateString('fr-FR')}
-                            </p>
+                            </span>
                           </div>
                         </div>
 
-                        {/* Prestation & Coordonnées */}
+                        {/* Intitulé prestation */}
                         {avis.intitule_prestation && (
-                          <div className="mt-2.5 px-3 py-1.5 bg-slate-50 rounded-xl text-xs text-slate-700 border border-slate-100">
-                            <strong>Prestation :</strong> {avis.intitule_prestation}
+                          <div className="my-2.5 inline-block text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-100 px-3 py-1 rounded-xl">
+                            🛠️ {avis.intitule_prestation}
                           </div>
                         )}
 
-                        {/* 6 Notes détaillées */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 my-3 text-[11px] bg-sky-50/40 p-2.5 rounded-2xl border border-sky-100">
-                          <div>
-                            <span className="text-slate-500">Conseil :</span>{' '}
-                            <strong className="text-sky-800">{avis.note_conseil}/5</strong>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Diversité :</span>{' '}
-                            <strong className="text-sky-800">{avis.note_diversite}/5</strong>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Propreté :</span>{' '}
-                            <strong className="text-sky-800">{avis.note_proprete}/5</strong>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Engagements :</span>{' '}
-                            <strong className="text-sky-800">{avis.note_engagements}/5</strong>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Qualité/Budget :</span>{' '}
-                            <strong className="text-sky-800">{avis.note_qualite_prix}/5</strong>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Recomm. :</span>{' '}
-                            <strong className="text-sky-800">{avis.note_recommandation}/5</strong>
-                          </div>
+                        {/* 6 critères en gouttes */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 my-3 text-[11px] bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+                          <div>Conseil : <strong>{avis.note_conseil}/5</strong></div>
+                          <div>Diversité : <strong>{avis.note_diversite}/5</strong></div>
+                          <div>Propreté : <strong>{avis.note_proprete}/5</strong></div>
+                          <div>Engagements : <strong>{avis.note_engagements}/5</strong></div>
+                          <div>Qualité/Prix : <strong>{avis.note_qualite_prix}/5</strong></div>
+                          <div>Recommandation : <strong>{avis.note_recommandation}/5</strong></div>
                         </div>
 
                         {/* Commentaire */}
@@ -604,7 +769,7 @@ export default function AdminPage() {
                           </p>
                         )}
 
-                        {/* Photos Cloudflare R2 (Miniature cliquable vers HD originale) */}
+                        {/* Photos Cloudflare R2 */}
                         {avis.photos && avis.photos.length > 0 && (
                           <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
                             {avis.photos.map((item, idx) => {
@@ -632,7 +797,7 @@ export default function AdminPage() {
                           </div>
                         )}
 
-                        {/* Client details */}
+                        {/* Coordonnées client */}
                         <div className="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
                           {avis.email && <span>✉️ {avis.email}</span>}
                           {avis.telephone && <span>📞 {avis.telephone}</span>}
@@ -641,33 +806,44 @@ export default function AdminPage() {
                       </div>
 
                       {/* Actions modération */}
-                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
-                        {avis.statut === 'approuve' ? (
+                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-3">
+                        {isDeleted ? (
                           <button
-                            onClick={() => handleUpdateAvisStatut(avis.id, 'masque')}
-                            className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition font-medium border border-amber-200"
+                            onClick={() => handleRestoreAvis(avis.id)}
+                            className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition"
                           >
-                            <EyeOff className="w-3.5 h-3.5" />
-                            <span>Masquer du public</span>
+                            <RotateCcw className="w-4 h-4" />
+                            <span>Restaurer l'avis immédiatement</span>
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleUpdateAvisStatut(avis.id, 'approuve')}
-                            className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition font-medium border border-emerald-200"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>Approuver & Publier</span>
-                          </button>
-                        )}
+                          <>
+                            {avis.statut === 'approuve' ? (
+                              <button
+                                onClick={() => handleUpdateAvisStatut(avis.id, 'masque')}
+                                className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition font-medium border border-amber-200"
+                              >
+                                <EyeOff className="w-3.5 h-3.5" />
+                                <span>Masquer du public</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateAvisStatut(avis.id, 'approuve')}
+                                className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition font-medium border border-emerald-200"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Approuver & Publier</span>
+                              </button>
+                            )}
 
-                        {!avis.deleted_at && (
-                          <button
-                            onClick={() => handleSoftDeleteAvis(avis.id)}
-                            className="text-xs text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
-                            title="Archiver l'avis (zéro perte)"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => handleSoftDeleteAvis(avis.id)}
+                              className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 p-1.5 rounded-lg hover:bg-rose-50 transition"
+                              title="Déplacer dans la corbeille (restaurable pendant 7 jours)"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span className="text-[11px] hidden sm:inline">Corbeille</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -679,11 +855,338 @@ export default function AdminPage() {
         )}
 
         {/* ========================================================= */}
-        {/* ONGLET 2 : GESTION DES AGENCES */}
+        {/* ONGLET 2 : GESTION DES COLLABORATEURS & STATISTIQUES */}
+        {/* ========================================================= */}
+        {tab === 'collabs' && (
+          <div className="space-y-6">
+            {/* Formulaire ajout collaborateur */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-sky-600" />
+                <span>Ajouter un nouveau collaborateur</span>
+              </h3>
+              <form onSubmit={handleAddCollaborateur} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Agence de rattachement
+                  </label>
+                  <select
+                    value={newCollabSiteId}
+                    onChange={(e) => setNewCollabSiteId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
+                  >
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Nom & Prénom
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex. : Jérôme DURAND"
+                    value={newCollabNom}
+                    onChange={(e) => setNewCollabNom(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Rôle / Métier
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex. : Responsable d'agence & Conseil"
+                    value={newCollabRole}
+                    onChange={(e) => setNewCollabRole(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition"
+                  >
+                    Ajouter le collaborateur
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Filtre agence collaborateur */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Filtrer par agence :</span>
+                <select
+                  value={collabFilterSite}
+                  onChange={(e) => setCollabFilterSite(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700"
+                >
+                  <option value="all">Toutes les agences ({sites.length})</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative min-w-[220px]">
+                <input
+                  type="text"
+                  placeholder="Rechercher collaborateur..."
+                  value={collabSearchTerm}
+                  onChange={(e) => setCollabSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            {/* Cartes détaillées des collaborateurs avec statistiques */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredCollabs.map((collab) => {
+                const siteName =
+                  sites.find((s) => s.id === collab.site_id)?.nom || (collab.sites as any)?.nom;
+                const stats = collab.stats || {
+                  total_avis: 0,
+                  total_approuve: 0,
+                  moyenne_globale: 0,
+                  moyenne_conseil: 0,
+                  moyenne_diversite: 0,
+                  moyenne_proprete: 0,
+                  moyenne_engagements: 0,
+                  moyenne_qualite_prix: 0,
+                  moyenne_recommandation: 0,
+                };
+
+                return (
+                  <div
+                    key={collab.id}
+                    className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-sky-200 transition"
+                  >
+                    <div>
+                      {/* En-tête collaborateur */}
+                      <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-700 font-extrabold flex items-center justify-center text-sm shadow-xs">
+                            {collab.nom
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-900 text-sm">{collab.nom}</h4>
+                              <button
+                                onClick={() => handleToggleCollab(collab)}
+                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold border transition ${
+                                  collab.actif
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                                }`}
+                              >
+                                {collab.actif ? 'Actif' : 'Inactif'}
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-500">{collab.role || 'Conseiller'}</p>
+                            <p className="text-[11px] text-sky-700 font-medium mt-0.5">
+                              📍 {siteName}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Note moyenne globale */}
+                        <div className="text-right">
+                          <div className="text-lg font-black text-sky-600 flex items-center justify-end gap-1">
+                            <Droplet className="w-4 h-4 fill-sky-500 text-sky-500" />
+                            <span>{stats.moyenne_globale > 0 ? stats.moyenne_globale : '-'}</span>
+                            <span className="text-xs text-slate-400 font-normal">/5</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {stats.total_avis} avis ({stats.total_approuve} certifiés)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Grille des 6 moyennes par critère */}
+                      <div className="mt-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                          Moyennes par critère (gouttes d'eau)
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                          <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-xl border border-slate-100">
+                            <span className="text-slate-500 text-[11px]">Conseil</span>
+                            <strong className="text-sky-700 font-bold">{stats.moyenne_conseil || '-'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-xl border border-slate-100">
+                            <span className="text-slate-500 text-[11px]">Diversité</span>
+                            <strong className="text-sky-700 font-bold">{stats.moyenne_diversite || '-'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-xl border border-slate-100">
+                            <span className="text-slate-500 text-[11px]">Propreté</span>
+                            <strong className="text-sky-700 font-bold">{stats.moyenne_proprete || '-'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-xl border border-slate-100">
+                            <span className="text-slate-500 text-[11px]">Engagements</span>
+                            <strong className="text-sky-700 font-bold">{stats.moyenne_engagements || '-'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-xl border border-slate-100">
+                            <span className="text-slate-500 text-[11px]">Qualité/Prix</span>
+                            <strong className="text-sky-700 font-bold">{stats.moyenne_qualite_prix || '-'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-xl border border-slate-100">
+                            <span className="text-slate-500 text-[11px]">Recommandation</span>
+                            <strong className="text-sky-700 font-bold">{stats.moyenne_recommandation || '-'}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Boutons d'action pour le collaborateur */}
+                    <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 mt-3">
+                      <button
+                        onClick={() => {
+                          setFilterCollab(collab.id);
+                          setTab('avis');
+                        }}
+                        className="text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-sky-50 transition"
+                      >
+                        <span>Voir ses avis ({stats.total_avis})</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleStartEditCollab(collab)}
+                          className="text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Modifier</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteCollab(collab)}
+                          className="text-xs text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-rose-50 transition"
+                          title="Supprimer ce collaborateur"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal d'édition d'un collaborateur */}
+            {editingCollab && (
+              <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                    <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                      <Edit3 className="w-4 h-4 text-sky-600" />
+                      <span>Modifier le collaborateur</span>
+                    </h3>
+                    <button
+                      onClick={() => setEditingCollab(null)}
+                      className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveEditCollab} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Nom et Prénom
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editCollabNom}
+                        onChange={(e) => setEditCollabNom(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Rôle / Métier
+                      </label>
+                      <input
+                        type="text"
+                        value={editCollabRole}
+                        onChange={(e) => setEditCollabRole(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Agence de rattachement
+                      </label>
+                      <select
+                        value={editCollabSiteId}
+                        onChange={(e) => setEditCollabSiteId(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
+                      >
+                        {sites.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 pt-1">
+                      <input
+                        type="checkbox"
+                        id="collabActifCheck"
+                        checked={editCollabActif}
+                        onChange={(e) => setEditCollabActif(e.target.checked)}
+                        className="w-4 h-4 text-sky-600 rounded border-slate-300"
+                      />
+                      <label htmlFor="collabActifCheck" className="text-xs font-semibold text-slate-700">
+                        Collaborateur actif (affiché dans le formulaire client)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditingCollab(null)}
+                        className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingCollab}
+                        className="px-5 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-xs transition disabled:opacity-50"
+                      >
+                        {isSavingCollab ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* ONGLET 3 : GESTION DES AGENCES */}
         {/* ========================================================= */}
         {tab === 'sites' && (
           <div className="space-y-6">
-            {/* Formulaire ajout agence */}
             <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-sky-600" />
@@ -737,7 +1240,6 @@ export default function AdminPage() {
               </form>
             </div>
 
-            {/* Tableau des agences */}
             <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h4 className="font-bold text-sm text-slate-900">Agences existantes</h4>
@@ -745,45 +1247,36 @@ export default function AdminPage() {
               </div>
               <div className="divide-y divide-slate-100">
                 {sites.map((site) => {
-                  const countAvis = avisList.filter((a) => a.site_id === site.id).length;
+                  const countAvis = avisList.filter((a) => a.site_id === site.id && !a.deleted_at).length;
                   const countCollabs = collaborateurs.filter((c) => c.site_id === site.id).length;
                   return (
                     <div
                       key={site.id}
-                      className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50/70 transition"
+                      className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition"
                     >
                       <div>
                         <div className="flex items-center gap-2">
                           <h5 className="font-bold text-sm text-slate-900">{site.nom}</h5>
-                          <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                            slug: {site.slug}
+                          <span className="text-[10px] bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded-lg">
+                            {site.slug}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {countCollabs} collaborateur(s) • {countAvis} avis recueilli(s)
+                          {countCollabs} collaborateur(s) • {countAvis} avis déposé(s)
                         </p>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleToggleSite(site)}
-                          className={`text-xs px-3 py-1.5 rounded-xl font-semibold border transition ${
+                          className={`text-xs px-3 py-1.5 rounded-xl font-bold border transition ${
                             site.actif
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                           }`}
                         >
-                          {site.actif ? 'Actif' : 'Désactivé'}
+                          {site.actif ? 'Actif' : 'Inactif'}
                         </button>
-                        <a
-                          href={`/api/avis?site=${site.slug}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-sky-600 hover:text-sky-700 px-2 py-1.5 hover:bg-sky-50 rounded-lg"
-                          title="Tester le flux JSON"
-                        >
-                          API JSON
-                        </a>
                       </div>
                     </div>
                   );
@@ -794,117 +1287,7 @@ export default function AdminPage() {
         )}
 
         {/* ========================================================= */}
-        {/* ONGLET 3 : GESTION DES COLLABORATEURS */}
-        {/* ========================================================= */}
-        {tab === 'collabs' && (
-          <div className="space-y-6">
-            {/* Formulaire ajout collaborateur */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-sky-600" />
-                <span>Ajouter un nouveau collaborateur</span>
-              </h3>
-              <form onSubmit={handleAddCollaborateur} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Agence de rattachement
-                  </label>
-                  <select
-                    value={newCollabSiteId}
-                    onChange={(e) => setNewCollabSiteId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
-                  >
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nom}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Nom & Prénom
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Marc Vasseur"
-                    value={newCollabNom}
-                    onChange={(e) => setNewCollabNom(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Rôle / Métier
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Conseiller Piscines"
-                    value={newCollabRole}
-                    onChange={(e) => setNewCollabRole(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition"
-                  >
-                    Ajouter le collaborateur
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Liste collaborateurs par agence */}
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
-              {sites.map((site) => {
-                const collabs = collaborateurs.filter((c) => c.site_id === site.id);
-                return (
-                  <div key={site.id} className="p-5">
-                    <h4 className="font-bold text-sm text-sky-800 mb-2 flex items-center gap-2">
-                      <Building className="w-4 h-4" />
-                      <span>{site.nom}</span>
-                      <span className="text-xs font-normal text-slate-400">({collabs.length} collabs)</span>
-                    </h4>
-
-                    {collabs.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic">Aucun collaborateur enregistré.</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {collabs.map((collab) => (
-                          <div
-                            key={collab.id}
-                            className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between"
-                          >
-                            <div>
-                              <p className="text-xs font-bold text-slate-800">{collab.nom}</p>
-                              <p className="text-[11px] text-slate-500">{collab.role || 'Conseiller'}</p>
-                            </div>
-                            <button
-                              onClick={() => handleToggleCollab(collab)}
-                              className={`text-[10px] px-2 py-1 rounded-lg font-bold border transition ${
-                                collab.actif
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : 'bg-slate-200 text-slate-600 border-slate-300'
-                              }`}
-                            >
-                              {collab.actif ? 'Actif' : 'Inactif'}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================= */}
-        {/* ONGLET 4 : ENVOYER UN QUESTIONNAIRE (Inspiré des captures) */}
+        {/* ONGLET 4 : ENVOYER UN QUESTIONNAIRE */}
         {/* ========================================================= */}
         {tab === 'send' && (
           <div className="max-w-2xl mx-auto space-y-4">
@@ -918,7 +1301,6 @@ export default function AdminPage() {
                 </span>
               </div>
 
-              {/* Bloc d'aide exactement inspiré de la capture */}
               <div className="my-4 bg-sky-50 border border-sky-100 rounded-2xl p-4 text-xs text-slate-700 space-y-2">
                 <p className="font-bold text-sky-900">
                   Comment rédiger un bon intitulé de prestation ?
@@ -931,17 +1313,11 @@ export default function AdminPage() {
                 </p>
               </div>
 
-              <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-                Utilisez ce formulaire pour préparer un lien de questionnaire de satisfaction pour vos clients.
-                Assurez-vous de les avoir informés préalablement et, si nécessaire, d'obtenir leur consentement avant l'envoi.
-              </p>
-
-              <form onSubmit={handleGenerateLink} className="space-y-4">
-                {/* Agence & Collaborateur */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleGenerateLink} className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Agence Blue 2.0
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Agence Blue 2.0 *
                     </label>
                     <select
                       value={sendSiteId}
@@ -949,7 +1325,7 @@ export default function AdminPage() {
                         setSendSiteId(e.target.value);
                         setSendCollabId('');
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
                     >
                       {sites.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -960,17 +1336,17 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Collaborateur
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Collaborateur intervenu
                     </label>
                     <select
                       value={sendCollabId}
                       onChange={(e) => setSendCollabId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
                     >
-                      <option value="">Choisir un collaborateur...</option>
+                      <option value="">Sélectionner un collaborateur</option>
                       {collaborateurs
-                        .filter((c) => c.site_id === sendSiteId)
+                        .filter((c) => c.site_id === sendSiteId && c.actif)
                         .map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.nom}
@@ -980,130 +1356,112 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Nom & Prénom */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Nom *
-                    </label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nom *</label>
                     <input
                       type="text"
-                      placeholder="Ex. : Martin"
+                      required
+                      placeholder="Dubois"
                       value={sendNom}
                       onChange={(e) => setSendNom(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Prénom *
-                    </label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Prénom *</label>
                     <input
                       type="text"
-                      placeholder="Ex. : Alice"
+                      required
+                      placeholder="Pierre"
                       value={sendPrenom}
                       onChange={(e) => setSendPrenom(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
                     />
                   </div>
                 </div>
 
-                {/* E-mail, Téléphone, Société */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      E-mail *
-                    </label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">E-mail *</label>
                     <input
                       type="email"
-                      placeholder="client@domaine.fr"
+                      required
+                      placeholder="client@gmail.com"
                       value={sendEmail}
                       onChange={(e) => setSendEmail(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Téléphone
-                    </label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Téléphone</label>
                     <input
                       type="tel"
-                      placeholder="06 00 00 00 00"
+                      placeholder="06 12 34 56 78"
                       value={sendTel}
                       onChange={(e) => setSendTel(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Société
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Optionnel"
-                      value={sendSociete}
-                      onChange={(e) => setSendSociete(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
                     />
                   </div>
                 </div>
 
-                {/* Intitulé de la prestation (0/80) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Société</label>
+                  <input
+                    type="text"
+                    placeholder="Nom d'entreprise (optionnel)"
+                    value={sendSociete}
+                    onChange={(e) => setSendSociete(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                  />
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-slate-700">
+                    <label className="block text-xs font-bold text-slate-700">
                       Intitulé de la prestation *
                     </label>
-                    <span className="text-[11px] text-slate-400">{sendPrestation.length}/80</span>
+                    <span className="text-[10px] text-slate-400">
+                      {sendPrestation.length}/80
+                    </span>
                   </div>
                   <input
                     type="text"
                     maxLength={80}
-                    placeholder="Ex. : Installation piscine coque polyester 7x3.5m et volet immergé"
+                    placeholder="Ex. : Construction piscine miroir 9x4 avec volet immergé"
                     value={sendPrestation}
                     onChange={(e) => setSendPrestation(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
                   />
                 </div>
 
-                {/* Boutons d'action (comme dans la capture) */}
-                <div className="pt-2 space-y-2">
+                <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-4 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-2xl shadow-lg shadow-orange-500/25 transition active:scale-[0.99]"
+                    className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm rounded-2xl shadow-md transition"
                   >
-                    Générer & Préparer le questionnaire
+                    Générer le questionnaire pré-rempli
                   </button>
-
-                  {generatedLink && (
-                    <a
-                      href={generatedLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-full block py-3.5 px-4 bg-white border border-slate-300 hover:border-slate-400 text-slate-700 text-center font-semibold text-sm rounded-2xl shadow-xs transition"
-                    >
-                      Accéder au questionnaire (sur cette tablette / téléphone)
-                    </a>
-                  )}
                 </div>
               </form>
 
-              {/* Résultat du lien pré-rempli */}
               {generatedLink && (
-                <div className="mt-5 p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 animate-in fade-in duration-300">
-                  <p className="text-xs font-bold text-slate-700">Lien direct à transmettre au client :</p>
+                <div className="mt-6 pt-5 border-t border-slate-200 space-y-3">
+                  <p className="text-xs font-bold text-emerald-800">
+                    Lien personnalisé généré pour ce client :
+                  </p>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
                       value={generatedLink}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-600"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 truncate"
                     />
                     <button
-                      onClick={copyLink}
-                      className="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 shrink-0 flex items-center gap-1.5"
+                      onClick={handleCopyLink}
+                      className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shrink-0 hover:bg-slate-800 flex items-center gap-1.5"
                     >
-                      {copySuccess ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <Copy className="w-3.5 h-3.5" />
                       <span>{copySuccess ? 'Copié !' : 'Copier'}</span>
                     </button>
                   </div>
@@ -1114,109 +1472,10 @@ export default function AdminPage() {
         )}
 
         {/* ========================================================= */}
-        {/* ONGLET 5 : WIDGET INTEGRATION & SAUVEGARDE ZÉRO PERTE */}
+        {/* ONGLET 5 : INTEGRATION & SAUVEGARDES */}
         {/* ========================================================= */}
         {tab === 'widget' && (
           <div className="space-y-6">
-            {/* Snippet d'intégration pour les sites web */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    Snippet d'intégration pour chaque site web Blue 2.0
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Insérez ce code HTML/JS sur n'importe quel site (WordPress, Webflow, HTML) pour afficher automatiquement les avis et moyennes certifiées.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-semibold">Agence :</span>
-                  <select
-                    value={widgetSiteSlug}
-                    onChange={(e) => setWidgetSiteSlug(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-medium"
-                  >
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.slug}>
-                        {s.nom} ({s.slug})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Code Snippet Box */}
-              <div className="relative">
-                <pre className="p-4 bg-slate-900 text-slate-200 rounded-2xl text-xs font-mono overflow-x-auto leading-relaxed border border-slate-800">
-{`<!-- Blue 2.0 Avis Widget (Multi-sites) -->
-<div id="blue2-avis-widget" data-site="${widgetSiteSlug}"></div>
-<script>
-(function() {
-  const container = document.getElementById('blue2-avis-widget');
-  const site = container.getAttribute('data-site');
-  const apiUrl = '${typeof window !== 'undefined' ? window.location.origin : 'https://votre-domaine.vercel.app'}/api/avis?site=' + site;
-
-  fetch(apiUrl)
-    .then(r => r.json())
-    .then(data => {
-      const { stats, avis, site: siteInfo } = data;
-      if (!stats || stats.total === 0) {
-        container.innerHTML = '<p style="font-size:13px;color:#64748b;">Aucun avis pour le moment.</p>';
-        return;
-      }
-      container.innerHTML = \`
-        <div style="font-family:system-ui,-apple-system,sans-serif;background:#fff;border-radius:20px;padding:24px;border:1px solid #e0f2fe;box-shadow:0 4px 15px rgba(2,132,199,0.06);max-width:480px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding-bottom:12px;margin-bottom:14px;">
-            <div>
-              <h4 style="margin:0;font-size:16px;color:#0f172a;font-weight:700;">\${siteInfo.nom}</h4>
-              <p style="margin:2px 0 0;font-size:12px;color:#0284c7;font-weight:600;">\${stats.total} avis certifiés</p>
-            </div>
-            <div style="font-size:22px;font-weight:800;color:#0284c7;background:#f0f9ff;padding:4px 12px;border-radius:14px;border:1px solid #bae6fd;">
-              💧 \${stats.moyenne_globale}/5
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:#475569;margin-bottom:16px;background:#f8fafc;padding:10px;border-radius:12px;">
-            <div>Conseil: <strong>\${stats.moyenne_conseil}/5</strong></div>
-            <div>Diversité: <strong>\${stats.moyenne_diversite}/5</strong></div>
-            <div>Propreté: <strong>\${stats.moyenne_proprete}/5</strong></div>
-            <div>Engagements: <strong>\${stats.moyenne_engagements}/5</strong></div>
-            <div>Qualité/Budget: <strong>\${stats.moyenne_qualite_prix}/5</strong></div>
-            <div>Recommandation: <strong>\${stats.moyenne_recommandation}/5</strong></div>
-          </div>
-          <div style="max-height:220px;overflow-y:auto;padding-right:4px;">
-            \${avis.slice(0, 3).map(a => \`
-              <div style="border-top:1px solid #f8fafc;padding:8px 0;">
-                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:#1e293b;">
-                  <span>\${a.prenom} \${a.initiale_nom}</span>
-                  <span style="color:#0284c7;">💧 \${a.notes.moyenne}/5</span>
-                </div>
-                \${a.commentaire ? \`<p style="margin:4px 0 0;font-size:11px;color:#64748b;font-style:italic;">"\${a.commentaire}"</p>\` : ''}
-              </div>
-            \`).join('')}
-          </div>
-        </div>
-      \`;
-    })
-    .catch(err => console.error('Erreur widget Blue 2.0:', err));
-})();
-<\/script>`}
-                </pre>
-                <button
-                  onClick={() => {
-                    const text = document.querySelector('pre')?.textContent || '';
-                    navigator.clipboard.writeText(text);
-                    alert('Snippet copié dans le presse-papier !');
-                  }}
-                  className="absolute top-3 right-3 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copier le snippet</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Sauvegarde Zéro Perte & Keep-alive */}
             <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
@@ -1268,8 +1527,7 @@ export default function AdminPage() {
               </div>
 
               {cronReport && (
-                <div className="p-4 bg-slate-900 text-emerald-400 rounded-2xl text-xs font-mono overflow-x-auto">
-                  <p className="font-bold mb-1">Résultat du Cron :</p>
+                <div className="mt-3 p-3 bg-slate-900 text-slate-200 rounded-xl text-xs font-mono overflow-x-auto">
                   <pre>{JSON.stringify(cronReport, null, 2)}</pre>
                 </div>
               )}

@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     const sql = getDb();
     if (!sql) throw new Error('Database client unavailable');
 
+    // Récupère les avis actifs ainsi que ceux placés dans la corbeille depuis moins de 7 jours
     const rows = await sql`
       SELECT 
         a.*,
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
       FROM avis a
       LEFT JOIN sites s ON s.id = a.site_id
       LEFT JOIN collaborateurs c ON c.id = a.collaborateur_id
-      WHERE a.deleted_at IS NULL
+      WHERE a.deleted_at IS NULL OR a.deleted_at >= NOW() - INTERVAL '7 days'
       ORDER BY a.created_at DESC
     `;
 

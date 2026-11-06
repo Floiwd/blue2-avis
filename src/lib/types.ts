@@ -7,6 +7,18 @@ export interface Site {
   created_at: string;
 }
 
+export interface CollaborateurStats {
+  total_avis: number;
+  total_approuve: number;
+  moyenne_globale: number;
+  moyenne_conseil: number;
+  moyenne_diversite: number;
+  moyenne_proprete: number;
+  moyenne_engagements: number;
+  moyenne_qualite_prix: number;
+  moyenne_recommandation: number;
+}
+
 export interface Collaborateur {
   id: string;
   site_id: string;
@@ -15,6 +27,8 @@ export interface Collaborateur {
   actif: boolean;
   deleted_at?: string | null;
   created_at: string;
+  sites?: { id: string; nom: string; slug: string };
+  stats?: CollaborateurStats;
 }
 
 export interface PhotoKeyEntry {
