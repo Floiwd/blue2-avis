@@ -7,7 +7,7 @@ import {
   FALLBACK_AVIS,
 } from '@/lib/supabase';
 import { Avis } from '@/lib/types';
-
+import { getPhotoUrlFromKey } from '@/lib/r2';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +19,39 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: CORS_HEADERS,
+  });
+}
+
+function formatPhotoKeys(rawPhotos: any[]) {
+  if (!Array.isArray(rawPhotos)) return [];
+  return rawPhotos.map((p) => {
+    let originalKey = '';
+    let thumbnailKey = '';
+    if (typeof p === 'string') {
+      try {
+        const parsed = JSON.parse(p);
+        if (parsed.original || parsed.thumbnail) {
+          originalKey = parsed.original || parsed.thumbnail;
+          thumbnailKey = parsed.thumbnail || parsed.original;
+        } else {
+          originalKey = p;
+          thumbnailKey = p;
+        }
+      } catch {
+        originalKey = p;
+        thumbnailKey = p;
+      }
+    } else if (typeof p === 'object' && p !== null) {
+      originalKey = p.original || p.thumbnail;
+      thumbnailKey = p.thumbnail || p.original;
+    }
+
+    return {
+      thumbnail: getPhotoUrlFromKey(thumbnailKey),
+      original: getPhotoUrlFromKey(originalKey),
+      key_thumbnail: thumbnailKey,
+      key_original: originalKey,
+    };
   });
 }
 
@@ -101,6 +134,7 @@ export async function GET(req: NextRequest) {
           prenom: a.prenom,
           initiale_nom: a.nom ? a.nom.charAt(0).toUpperCase() + '.' : '',
           created_at: a.created_at,
+          intitule_prestation: a.intitule_prestation || null,
           notes: {
             conseil: a.note_conseil,
             diversite: a.note_diversite,
@@ -121,7 +155,7 @@ export async function GET(req: NextRequest) {
           },
           collaborateur: collab ? { nom: collab.nom, role: collab.role } : null,
           commentaire: a.commentaire,
-          photos: a.photos || [],
+          photos: formatPhotoKeys(a.photos || []),
         };
       });
 
@@ -161,6 +195,7 @@ export async function GET(req: NextRequest) {
       .from('avis')
       .select(`
         id,
+        intitule_prestation,
         note_conseil,
         note_diversite,
         note_proprete,
@@ -195,6 +230,7 @@ export async function GET(req: NextRequest) {
       prenom: a.prenom,
       initiale_nom: a.nom ? a.nom.charAt(0).toUpperCase() + '.' : '',
       created_at: a.created_at,
+      intitule_prestation: a.intitule_prestation || null,
       notes: {
         conseil: a.note_conseil,
         diversite: a.note_diversite,
@@ -216,7 +252,7 @@ export async function GET(req: NextRequest) {
       collaborateur: a.collaborateurs ? { nom: a.collaborateurs.nom, role: a.collaborateurs.role } : null,
       site: a.sites ? { nom: a.sites.nom, slug: a.sites.slug } : null,
       commentaire: a.commentaire,
-      photos: a.photos || [],
+      photos: formatPhotoKeys(a.photos || []),
     }));
 
     return NextResponse.json(

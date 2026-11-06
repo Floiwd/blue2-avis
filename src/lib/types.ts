@@ -17,6 +17,11 @@ export interface Collaborateur {
   created_at: string;
 }
 
+export interface PhotoKeyEntry {
+  original: string;
+  thumbnail: string;
+}
+
 export interface Avis {
   id: string;
   site_id: string;
@@ -29,7 +34,7 @@ export interface Avis {
   note_qualite_prix: number;
   note_recommandation: number;
   commentaire: string | null;
-  photos: string[];
+  photos: (string | PhotoKeyEntry)[]; // Clés Cloudflare R2
   nom: string;
   prenom: string;
   email: string | null;

@@ -1,26 +1,29 @@
 /**
- * Compression d'images côté client avant envoi.
- * Réduit la résolution (max 1600px) et compresse en JPEG/WebP (qualité 0.82)
- * pour un chargement ultra-rapide et économique en data mobile.
+ * Gestion des photos pour Cloudflare R2 :
+ * - Original : Qualité brute d'origine (aucun redimensionnement, aucune compression)
+ * - Miniature : Générée côté client (~800px) pour affichage web ultra-rapide
+ * Formats acceptés : JPEG, PNG, HEIC, WebP (max 15 Mo, max 8 photos)
  */
 
-export interface CompressedImageResult {
-  file: File;
+export interface PhotoProcessingResult {
+  originalFile: File;
+  thumbnailFile: File;
   previewUrl: string;
   originalSize: number;
-  compressedSize: number;
+  thumbnailSize: number;
 }
 
-export async function compressImage(
+export async function processPhotoForR2(
   file: File,
-  maxDimension = 1600,
-  quality = 0.82
-): Promise<CompressedImageResult> {
+  thumbnailMaxDimension = 800
+): Promise<PhotoProcessingResult> {
   const originalSize = file.size;
 
+  // Création de l'aperçu et de la miniature via canvas
   return new Promise((resolve, reject) => {
-    // Si ce n'est pas une image, rejeter
-    if (!file.type.startsWith('image/')) {
+    // Si c'est un format non supporté par le Canvas natif (ex. HEIC sur certains navigateurs desktop)
+    const isImage = file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name);
+    if (!isImage) {
       return reject(new Error('Le fichier sélectionné n\'est pas une image.'));
     }
 
@@ -28,19 +31,31 @@ export async function compressImage(
     reader.onerror = () => reject(new Error('Erreur de lecture du fichier'));
     reader.onload = (e) => {
       const img = new Image();
-      img.onerror = () => reject(new Error('Erreur de chargement de l\'image'));
+      img.onerror = () => {
+        // Fallback si le décodeur canvas ne peut pas parser l'image (ex: HEIC brut sans lib externe)
+        // On conserve alors le fichier original pour les deux
+        const fallbackThumb = new File([file], `thumb-${file.name}`, { type: file.type });
+        resolve({
+          originalFile: file,
+          thumbnailFile: fallbackThumb,
+          previewUrl: URL.createObjectURL(file),
+          originalSize,
+          thumbnailSize: originalSize,
+        });
+      };
+
       img.onload = () => {
         let width = img.width;
         let height = img.height;
 
-        // Calcul du redimensionnement proportionnel
-        if (width > maxDimension || height > maxDimension) {
+        // Redimensionnement proportionnel à ~800px max pour la miniature
+        if (width > thumbnailMaxDimension || height > thumbnailMaxDimension) {
           if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
+            height = Math.round((height * thumbnailMaxDimension) / width);
+            width = thumbnailMaxDimension;
           } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
+            width = Math.round((width * thumbnailMaxDimension) / height);
+            height = thumbnailMaxDimension;
           }
         }
 
@@ -50,42 +65,56 @@ export async function compressImage(
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          return reject(new Error('Impossible d\'initialiser le contexte canvas'));
+          const fallbackThumb = new File([file], `thumb-${file.name}`, { type: file.type });
+          return resolve({
+            originalFile: file,
+            thumbnailFile: fallbackThumb,
+            previewUrl: URL.createObjectURL(file),
+            originalSize,
+            thumbnailSize: originalSize,
+          });
         }
 
-        // Amélioration du lissage
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Détection du format : WebP ou JPEG
-        const outputMime = 'image/jpeg';
         canvas.toBlob(
           (blob) => {
             if (!blob) {
-              return reject(new Error('Erreur lors de la compression de l\'image'));
+              const fallbackThumb = new File([file], `thumb-${file.name}`, { type: file.type });
+              return resolve({
+                originalFile: file,
+                thumbnailFile: fallbackThumb,
+                previewUrl: URL.createObjectURL(file),
+                originalSize,
+                thumbnailSize: originalSize,
+              });
             }
 
-            const cleanFileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
-            const compressedFile = new File([blob], cleanFileName, {
-              type: outputMime,
+            const cleanThumbName = 'thumb-' + file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+            const thumbnailFile = new File([blob], cleanThumbName, {
+              type: 'image/jpeg',
               lastModified: Date.now(),
             });
 
             const previewUrl = URL.createObjectURL(blob);
             resolve({
-              file: compressedFile,
+              originalFile: file,
+              thumbnailFile,
               previewUrl,
               originalSize,
-              compressedSize: blob.size,
+              thumbnailSize: blob.size,
             });
           },
-          outputMime,
-          quality
+          'image/jpeg',
+          0.85
         );
       };
+
       img.src = e.target?.result as string;
     };
+
     reader.readAsDataURL(file);
   });
 }

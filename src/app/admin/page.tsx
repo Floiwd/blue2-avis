@@ -26,10 +26,11 @@ import {
   Download,
 } from 'lucide-react';
 import { Site, Collaborateur, Avis, CRITERIA } from '@/lib/types';
+import { resolvePhotoUrls } from '@/lib/photo-utils';
 
 export default function AdminPage() {
-  // Auth state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  // Auth state : mot de passe temporairement désactivé pour accès direct
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -87,12 +88,6 @@ export default function AdminPage() {
         fetch('/api/admin/sites'),
         fetch('/api/admin/collaborateurs'),
       ]);
-
-      if (resAvis.status === 401 || resSites.status === 401) {
-        setIsAuthenticated(false);
-        setLoading(false);
-        return;
-      }
 
       setIsAuthenticated(true);
       const dataAvis = await resAvis.json();
@@ -321,64 +316,6 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
-  // -------------------------------------------------------------
-  // ECRAN DE LOGIN ADMIN
-  // -------------------------------------------------------------
-  if (isAuthenticated === false) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl text-white">
-          <div className="w-16 h-16 rounded-2xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center mx-auto mb-5 text-sky-400">
-            <Shield className="w-8 h-8" />
-          </div>
-          <h1 className="text-xl font-bold text-center mb-1">Administration Blue 2.0</h1>
-          <p className="text-xs text-slate-400 text-center mb-6">
-            Espace sécurisé de gestion et modération des avis
-          </p>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Mot de passe administrateur
-              </label>
-              <div className="relative">
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-                <Lock className="w-4 h-4 text-slate-500 absolute right-4 top-1/2 -translate-y-1/2" />
-              </div>
-            </div>
-
-            {loginError && (
-              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl">
-                {loginError}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoggingIn}
-              className="w-full py-3 px-4 bg-sky-500 hover:bg-sky-400 font-bold rounded-2xl text-sm transition shadow-lg shadow-sky-500/25 disabled:opacity-60"
-            >
-              {isLoggingIn ? 'Connexion en cours...' : 'Accéder au panneau d\'administration'}
-            </button>
-
-            <div className="pt-2 text-center">
-              <a href="/" className="text-xs text-slate-500 hover:text-sky-400 transition">
-                ← Retour au formulaire public
-              </a>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   // Filtrage des avis
   const filteredAvis = avisList.filter((a) => {
     if (filterSite !== 'all' && a.site_id !== filterSite) return false;
@@ -404,8 +341,8 @@ export default function AdminPage() {
             </div>
             <div>
               <span className="font-bold text-sm sm:text-base">Admin • Blue 2.0</span>
-              <span className="hidden sm:inline-block ml-2 text-xs bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full border border-sky-500/30">
-                PWA Avis Multi-sites
+              <span className="hidden sm:inline-block ml-2 text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                Accès direct libre (sans mot de passe)
               </span>
             </div>
           </div>
@@ -667,24 +604,31 @@ export default function AdminPage() {
                           </p>
                         )}
 
-                        {/* Photos */}
+                        {/* Photos Cloudflare R2 (Miniature cliquable vers HD originale) */}
                         {avis.photos && avis.photos.length > 0 && (
                           <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-                            {avis.photos.map((url, idx) => (
-                              <a
-                                key={idx}
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0"
-                              >
-                                <img
-                                  src={url}
-                                  alt="Photo avis"
-                                  className="w-full h-full object-cover hover:scale-105 transition"
-                                />
-                              </a>
-                            ))}
+                            {avis.photos.map((item, idx) => {
+                              const { thumbnail, original } = resolvePhotoUrls(item);
+                              return (
+                                <a
+                                  key={idx}
+                                  href={original}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="group/photo relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100 shadow-xs"
+                                  title="Cliquer pour voir l'original HD (Cloudflare R2)"
+                                >
+                                  <img
+                                    src={thumbnail || original}
+                                    alt="Photo avis"
+                                    className="w-full h-full object-cover group-hover/photo:scale-105 transition"
+                                  />
+                                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">
+                                    HD
+                                  </span>
+                                </a>
+                              );
+                            })}
                           </div>
                         )}
 

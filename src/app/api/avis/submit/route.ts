@@ -87,7 +87,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Données de l'avis
+    // 4. Traitement des clés photos Cloudflare R2 (max 8 photos)
+    const sanitizedPhotos = Array.isArray(photos)
+      ? photos.slice(0, 8).map((p: any) => (typeof p === 'object' ? JSON.stringify(p) : String(p)))
+      : [];
+
+    // 5. Données de l'avis
     const newAvis = {
       site_id,
       collaborateur_id,
@@ -99,7 +104,7 @@ export async function POST(req: NextRequest) {
       note_qualite_prix: Number(note_qualite_prix),
       note_recommandation: Number(note_recommandation),
       commentaire: commentaire?.trim() || null,
-      photos: Array.isArray(photos) ? photos : [],
+      photos: sanitizedPhotos,
       nom: nom.trim(),
       prenom: prenom.trim(),
       email: email?.trim() || null,

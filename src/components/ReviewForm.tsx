@@ -17,17 +17,23 @@ import {
   Phone,
   Mail,
   ChevronDown,
+  CloudUpload,
 } from 'lucide-react';
 import { Site, Collaborateur, CRITERIA } from '@/lib/types';
 import { WaterDropRating } from './WaterDropRating';
-import { compressImage } from '@/lib/image-compress';
+import { processPhotoForR2 } from '@/lib/image-compress';
 
 interface PhotoItem {
   id: string;
-  file: File;
+  originalFile: File;
+  thumbnailFile: File;
   previewUrl: string;
-  sizeKb: number;
+  originalSizeMb: string;
+  thumbnailSizeKb: number;
 }
+
+const MAX_PHOTOS = 8;
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 Mo
 
 export function ReviewForm() {
   const [sites, setSites] = useState<(Site & { collaborateurs: Collaborateur[] })[]>([]);
@@ -38,7 +44,7 @@ export function ReviewForm() {
   const [selectedCollaborateurId, setSelectedCollaborateurId] = useState<string>('');
   const [intitulePrestation, setIntitulePrestation] = useState<string>('');
 
-  // Identité client
+  // Identité client (Étape 2)
   const [nom, setNom] = useState<string>('');
   const [prenom, setPrenom] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -58,9 +64,9 @@ export function ReviewForm() {
   // Commentaire libre
   const [commentaire, setCommentaire] = useState<string>('');
 
-  // Photos
+  // Photos (Cloudflare R2 : Original + Miniature ~800px)
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
-  const [compressing, setCompressing] = useState<boolean>(false);
+  const [processingPhotos, setProcessingPhotos] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Anti-spam Honeypot
@@ -68,6 +74,7 @@ export function ReviewForm() {
 
   // UI State
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [uploadProgressText, setUploadProgressText] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
@@ -80,7 +87,6 @@ export function ReviewForm() {
         const siteList = data.sites || [];
         setSites(siteList);
 
-        // Pre-fill via search params si disponibles
         if (typeof window !== 'undefined') {
           const params = new URLSearchParams(window.location.search);
           const siteParam = params.get('site');
@@ -124,39 +130,62 @@ export function ReviewForm() {
   const currentSite = sites.find((s) => s.id === selectedSiteId);
   const currentCollaborateurs = currentSite?.collaborateurs || [];
 
-  // Mise à jour d'une note
   const handleNoteChange = (key: string, val: number) => {
     setNotes((prev) => ({ ...prev, [key]: val }));
     setErrorMessage(null);
   };
 
-  // Gestion des photos avec compression côté client
+  // Traitement des photos : original brut + miniature ~800px générée côté client
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setCompressing(true);
+    if (photos.length + files.length > MAX_PHOTOS) {
+      setErrorMessage(`Vous pouvez ajouter jusqu'à ${MAX_PHOTOS} photos maximum par avis.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setProcessingPhotos(true);
     setErrorMessage(null);
 
     const newPhotoItems: PhotoItem[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+
+      // Vérification taille (15 Mo max)
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setErrorMessage(`La photo "${file.name}" dépasse la taille maximale autorisée de 15 Mo.`);
+        continue;
+      }
+
+      // Vérification format (JPEG, PNG, HEIC, WebP)
+      const isAllowed =
+        /\.(jpe?g|png|heic|heif|webp)$/i.test(file.name) ||
+        file.type.startsWith('image/');
+      if (!isAllowed) {
+        setErrorMessage(`Format non supporté pour "${file.name}". Formats acceptés : JPEG, PNG, HEIC, WebP.`);
+        continue;
+      }
+
       try {
-        const result = await compressImage(file, 1600, 0.82);
+        const result = await processPhotoForR2(file, 800);
         newPhotoItems.push({
           id: `${Date.now()}-${i}-${Math.random()}`,
-          file: result.file,
+          originalFile: result.originalFile,
+          thumbnailFile: result.thumbnailFile,
           previewUrl: result.previewUrl,
-          sizeKb: Math.round(result.compressedSize / 1024),
+          originalSizeMb: (result.originalSize / (1024 * 1024)).toFixed(1),
+          thumbnailSizeKb: Math.round(result.thumbnailSize / 1024),
         });
-      } catch (err) {
-        console.warn('Compression error on file:', file.name, err);
+      } catch (err: any) {
+        console.warn('Erreur traitement photo:', file.name, err);
       }
     }
 
     setPhotos((prev) => [...prev, ...newPhotoItems]);
-    setCompressing(false);
+    setProcessingPhotos(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -164,7 +193,7 @@ export function ReviewForm() {
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // Validation et soumission
+  // Soumission avec upload direct vers Cloudflare R2
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -197,41 +226,97 @@ export function ReviewForm() {
     }
 
     setIsSubmitting(true);
+    setUploadProgressText('Préparation des photos...');
 
     try {
-      // Étape 1 : Upload des photos vers le Storage (si présentes)
-      let uploadedPhotoUrls: string[] = [];
-      if (photos.length > 0) {
-        const formData = new FormData();
-        photos.forEach((p) => formData.append('files', p.file));
+      const photoKeysToStore: { original: string; thumbnail: string }[] = [];
 
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
+      // Étape 1 : Si des photos sont présentes, upload direct vers Cloudflare R2
+      if (photos.length > 0) {
+        // Préparer la liste des fichiers à présigner (originaux + miniatures)
+        const filesToPresign: any[] = [];
+        photos.forEach((p) => {
+          filesToPresign.push({
+            filename: p.originalFile.name,
+            contentType: p.originalFile.type || 'image/jpeg',
+            size: p.originalFile.size,
+            type: 'original',
+          });
+          filesToPresign.push({
+            filename: p.thumbnailFile.name,
+            contentType: 'image/jpeg',
+            size: p.thumbnailFile.size,
+            type: 'thumbnail',
+          });
         });
 
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          uploadedPhotoUrls = uploadData.urls || [];
-        } else {
-          console.warn('Photos upload failed, continuing with review submission');
+        const presignRes = await fetch('/api/upload/presign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: filesToPresign }),
+        });
+
+        if (!presignRes.ok) {
+          const errData = await presignRes.json();
+          throw new Error(errData.error || 'Erreur lors de la préparation de l\'envoi des photos.');
+        }
+
+        const presignData = await presignRes.json();
+        const urls = presignData.urls || [];
+
+        // Upload direct vers Cloudflare R2 via HTTP PUT (bypass total des limites Vercel)
+        for (let i = 0; i < photos.length; i++) {
+          const photoItem = photos[i];
+          const origPresign = urls[i * 2];
+          const thumbPresign = urls[i * 2 + 1];
+
+          setUploadProgressText(`Upload photo ${i + 1}/${photos.length} vers Cloudflare R2...`);
+
+          if (origPresign?.uploadUrl) {
+            // Upload original brut (qualité d'origine sans compression)
+            await fetch(origPresign.uploadUrl, {
+              method: 'PUT',
+              body: photoItem.originalFile,
+              headers: {
+                'Content-Type': photoItem.originalFile.type || 'image/jpeg',
+              },
+            });
+          }
+
+          if (thumbPresign?.uploadUrl) {
+            // Upload miniature ~800px
+            await fetch(thumbPresign.uploadUrl, {
+              method: 'PUT',
+              body: photoItem.thumbnailFile,
+              headers: {
+                'Content-Type': 'image/jpeg',
+              },
+            });
+          }
+
+          photoKeysToStore.push({
+            original: origPresign?.key || `r2-orig-${Date.now()}-${photoItem.originalFile.name}`,
+            thumbnail: thumbPresign?.key || `r2-thumb-${Date.now()}-${photoItem.thumbnailFile.name}`,
+          });
         }
       }
 
-      // Étape 2 : Soumission de l'avis
+      setUploadProgressText('Enregistrement de votre avis...');
+
+      // Étape 2 : Soumission de l'avis avec uniquement les clés R2
       const payload = {
         site_id: selectedSiteId,
         collaborateur_id: selectedCollaborateurId,
         intitule_prestation: intitulePrestation,
         ...notes,
         commentaire,
-        photos: uploadedPhotoUrls,
+        photos: photoKeysToStore,
         nom,
         prenom,
         email,
         telephone,
         societe,
-        website_url_hp: hpWebsite, // honeypot
+        website_url_hp: hpWebsite,
       };
 
       const res = await fetch('/api/avis/submit', {
@@ -252,12 +337,11 @@ export function ReviewForm() {
       setErrorMessage(err.message || 'Une erreur inattendue est survenue.');
     } finally {
       setIsSubmitting(false);
+      setUploadProgressText('');
     }
   };
 
-  // -------------------------------------------------------------
   // ÉCRAN DE REMERCIEMENT (Succès)
-  // -------------------------------------------------------------
   if (isSuccess) {
     const collabName = currentCollaborateurs.find((c) => c.id === selectedCollaborateurId)?.nom;
     const siteName = currentSite?.nom;
@@ -286,7 +370,7 @@ export function ReviewForm() {
             {photos.length > 0 && (
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <Camera className="w-4 h-4 text-sky-600 shrink-0" />
-                <span>{photos.length} photo(s) ajoutée(s) à votre dossier.</span>
+                <span>{photos.length} photo(s) sauvegardée(s) en haute définition (Cloudflare R2).</span>
               </div>
             )}
           </div>
@@ -315,12 +399,9 @@ export function ReviewForm() {
     );
   }
 
-  // -------------------------------------------------------------
-  // FORMULAIRE PRINCIPAL (Directement affiché sur "/")
-  // -------------------------------------------------------------
+  // FORMULAIRE PRINCIPAL
   return (
     <div className="min-h-screen bg-slate-50/70 pb-16">
-      {/* En-tête Mobile-First Blue 2.0 */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-sky-100 shadow-xs px-4 py-3 sm:py-4">
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -346,10 +427,8 @@ export function ReviewForm() {
         </div>
       </header>
 
-      {/* Corps du Formulaire */}
       <main className="max-w-xl mx-auto px-4 pt-5">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Alerte Erreur */}
           {errorMessage && (
             <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -373,7 +452,6 @@ export function ReviewForm() {
               </h2>
             </div>
 
-            {/* Choix Agence */}
             <div>
               <label htmlFor="agence-select" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Agence Blue 2.0 <span className="text-sky-500">*</span>
@@ -400,7 +478,6 @@ export function ReviewForm() {
               </div>
             </div>
 
-            {/* Choix Collaborateur (apparaît au clic sur l'agence) */}
             {selectedSiteId && (
               <div className="animate-in fade-in duration-300">
                 <label htmlFor="collaborateur-select" className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -425,7 +502,6 @@ export function ReviewForm() {
               </div>
             )}
 
-            {/* Intitulé de la prestation (inspiré des captures) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="prestation-input" className="text-xs font-semibold text-slate-700">
@@ -540,7 +616,6 @@ export function ReviewForm() {
               />
             </div>
 
-            {/* Anti-spam Honeypot caché aux humains */}
             <div className="opacity-0 absolute pointer-events-none -z-50 h-0 overflow-hidden">
               <label htmlFor="hp_check">Ne pas remplir</label>
               <input
@@ -615,7 +690,7 @@ export function ReviewForm() {
           </section>
 
           {/* ============================================================== */}
-          {/* ÉTAPE 5 : Ajout de photos (compression client avant envoi) */}
+          {/* ÉTAPE 5 : Photos Cloudflare R2 (Original brut + miniature ~800px) */}
           {/* ============================================================== */}
           <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -628,11 +703,13 @@ export function ReviewForm() {
                     <Camera className="w-4 h-4 text-sky-600" />
                     <span>Photos du projet</span>
                   </h2>
-                  <p className="text-xs text-slate-500">Piscine, bassin, équipements réalisés</p>
+                  <p className="text-xs text-slate-500">
+                    Qualité d'origine préservée + miniature optimisée
+                  </p>
                 </div>
               </div>
               <span className="text-xs bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full font-semibold">
-                {photos.length} photo(s)
+                {photos.length}/{MAX_PHOTOS}
               </span>
             </div>
 
@@ -641,31 +718,31 @@ export function ReviewForm() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
               className="hidden"
               onChange={handlePhotoUpload}
             />
 
-            {/* Bouton d'ajout */}
+            {/* Zone d'importation */}
             <div
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-sky-200 hover:border-sky-400 bg-sky-50/40 hover:bg-sky-50 rounded-2xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2"
             >
-              {compressing ? (
+              {processingPhotos ? (
                 <div className="flex items-center gap-2 text-sky-700 text-sm font-semibold">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Optimisation & compression des photos...</span>
+                  <span>Traitement des photos en cours...</span>
                 </div>
               ) : (
                 <>
                   <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-sky-600">
-                    <Camera className="w-6 h-6" />
+                    <CloudUpload className="w-6 h-6" />
                   </div>
                   <p className="text-xs sm:text-sm font-semibold text-slate-700">
-                    Prendre une photo ou importer depuis la galerie
+                    Ajouter des photos du projet (jusqu'à 8 photos)
                   </p>
                   <p className="text-[11px] text-slate-400">
-                    Compression automatique côté client pour économiser vos données
+                    JPEG, PNG, HEIC, WebP • Jusqu'à 15 Mo par photo • Qualité d'origine conservée
                   </p>
                 </>
               )}
@@ -673,7 +750,7 @@ export function ReviewForm() {
 
             {/* Aperçu des photos sélectionnées */}
             {photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2.5 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
                 {photos.map((item) => (
                   <div
                     key={item.id}
@@ -694,9 +771,14 @@ export function ReviewForm() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-md font-mono">
-                      {item.sizeKb} Ko
-                    </span>
+                    <div className="absolute bottom-1 right-1 left-1 flex items-center justify-between pointer-events-none">
+                      <span className="bg-sky-600/90 text-white text-[9px] px-1 py-0.5 rounded font-mono">
+                        HD {item.originalSizeMb}M
+                      </span>
+                      <span className="bg-slate-900/80 text-white text-[9px] px-1 py-0.5 rounded font-mono">
+                        ~{item.thumbnailSizeKb}k
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -709,13 +791,13 @@ export function ReviewForm() {
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || compressing}
+              disabled={isSubmitting || processingPhotos}
               className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white rounded-2xl font-bold text-base shadow-lg shadow-sky-600/30 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-3"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Envoi en cours...</span>
+                  <span>{uploadProgressText || 'Envoi en cours...'}</span>
                 </>
               ) : (
                 <>

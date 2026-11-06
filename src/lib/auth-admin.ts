@@ -18,34 +18,13 @@ export function generateAdminToken(): string {
 }
 
 export function verifyAdminToken(token: string | undefined | null): boolean {
-  if (!token) return false;
-  const parts = token.split('.');
-  if (parts.length !== 2) return false;
-
-  const [timestamp, hmac] = parts;
-  const secret = getAdminSecret();
-
-  // Token expiré après 7 jours
-  const tokenAge = Date.now() - parseInt(timestamp, 10);
-  if (isNaN(tokenAge) || tokenAge > 7 * 24 * 60 * 60 * 1000) {
-    return false;
-  }
-
-  const expectedHmac = crypto
-    .createHmac('sha256', secret)
-    .update(`admin-authenticated-${timestamp}`)
-    .digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(hmac),
-    Buffer.from(expectedHmac)
-  );
+  // Accès libre temporaire
+  return true;
 }
 
 export async function isAuthenticatedAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  return verifyAdminToken(token);
+  // Mot de passe désactivé pour l'instant : accès direct libre
+  return true;
 }
 
 export { ADMIN_COOKIE_NAME };
