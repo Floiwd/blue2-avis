@@ -68,6 +68,7 @@ export function ReviewForm() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [processingPhotos, setProcessingPhotos] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   // Anti-spam Honeypot
   const [hpWebsite, setHpWebsite] = useState<string>('');
@@ -481,7 +482,7 @@ export function ReviewForm() {
                     setSelectedCollaborateurId('');
                   }}
                   disabled={loadingSites}
-                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 pr-10 text-sm text-slate-800 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 pr-10 text-base sm:text-sm text-slate-800 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition touch-manipulation"
                 >
                   <option value="">Sélectionnez votre agence Blue 2.0...</option>
                   {sites.map((site) => (
@@ -504,7 +505,7 @@ export function ReviewForm() {
                     id="collaborateur-select"
                     value={selectedCollaborateurId}
                     onChange={(e) => setSelectedCollaborateurId(e.target.value)}
-                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 pr-10 text-sm text-slate-800 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 pr-10 text-base sm:text-sm text-slate-800 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition touch-manipulation"
                   >
                     <option value="">Choisir un collaborateur...</option>
                     {currentCollaborateurs.map((collab) => (
@@ -532,7 +533,7 @@ export function ReviewForm() {
                 placeholder="Ex. : Rénovation liner & pose pompe à chaleur"
                 value={intitulePrestation}
                 onChange={(e) => setIntitulePrestation(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
               />
               <p className="text-[11px] text-slate-500 mt-1">
                 Résumez brièvement votre installation ou intervention, sans émoji.
@@ -556,7 +557,7 @@ export function ReviewForm() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="prenom-input" className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Prénom <span className="text-sky-500">*</span>
@@ -565,10 +566,11 @@ export function ReviewForm() {
                   id="prenom-input"
                   type="text"
                   required
+                  autoComplete="given-name"
                   placeholder="Jean"
                   value={prenom}
                   onChange={(e) => setPrenom(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
                 />
               </div>
 
@@ -580,10 +582,11 @@ export function ReviewForm() {
                   id="nom-input"
                   type="text"
                   required
+                  autoComplete="family-name"
                   placeholder="Dupont"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
                 />
               </div>
             </div>
@@ -596,10 +599,12 @@ export function ReviewForm() {
                 <input
                   id="email-input"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   placeholder="jean.dupont@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
                 />
               </div>
 
@@ -610,10 +615,12 @@ export function ReviewForm() {
                 <input
                   id="telephone-input"
                   type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   placeholder="06 12 34 56 78"
                   value={telephone}
                   onChange={(e) => setTelephone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
                 />
               </div>
             </div>
@@ -628,7 +635,7 @@ export function ReviewForm() {
                 placeholder="Ex. : SAS Dupont Paysages"
                 value={societe}
                 onChange={(e) => setSociete(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
               />
             </div>
 
@@ -701,14 +708,14 @@ export function ReviewForm() {
               value={commentaire}
               onChange={(e) => setCommentaire(e.target.value)}
               placeholder="Racontez-nous comment s'est déroulé votre projet avec Blue 2.0..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition resize-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-base sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition resize-none"
             />
           </section>
 
           {/* ============================================================== */}
           {/* ÉTAPE 5 : Photos Cloudflare R2 (Original brut + miniature ~800px) */}
           {/* ============================================================== */}
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-3">
+          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sky-100 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
@@ -729,7 +736,7 @@ export function ReviewForm() {
               </span>
             </div>
 
-            {/* Input file caché */}
+            {/* Inputs file cachés : 1 pour galerie, 1 pour appareil photo direct */}
             <input
               ref={fileInputRef}
               type="file"
@@ -738,55 +745,76 @@ export function ReviewForm() {
               className="hidden"
               onChange={handlePhotoUpload}
             />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
 
-            {/* Zone d'importation */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-sky-200 hover:border-sky-400 bg-sky-50/40 hover:bg-sky-50 rounded-2xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2"
-            >
-              {processingPhotos ? (
-                <div className="flex items-center gap-2 text-sky-700 text-sm font-semibold">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Traitement des photos en cours...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-sky-600">
-                    <CloudUpload className="w-6 h-6" />
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-700">
-                    Ajouter des photos du projet (jusqu'à 8 photos)
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    JPEG, PNG, HEIC, WebP • Jusqu'à 15 Mo par photo • Qualité d'origine conservée
-                  </p>
-                </>
-              )}
+            {/* Boutons d'ajout photo pensés pour mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={processingPhotos || photos.length >= MAX_PHOTOS}
+                className="py-3.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-800 border-2 border-sky-200 hover:border-sky-300 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition active:scale-95 touch-manipulation disabled:opacity-50"
+              >
+                <Camera className="w-5 h-5 text-sky-600 shrink-0" />
+                <span>Prendre une photo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={processingPhotos || photos.length >= MAX_PHOTOS}
+                className="py-3.5 px-4 bg-slate-50 hover:bg-slate-100 text-slate-700 border-2 border-slate-200 hover:border-slate-300 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition active:scale-95 touch-manipulation disabled:opacity-50"
+              >
+                <CloudUpload className="w-5 h-5 text-slate-500 shrink-0" />
+                <span>Choisir dans la galerie</span>
+              </button>
             </div>
 
-            {/* Aperçu des photos sélectionnées */}
+            {processingPhotos && (
+              <div className="flex items-center justify-center gap-2 text-sky-700 text-xs font-semibold py-2 bg-sky-50 rounded-xl">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Optimisation et préparation des photos en cours...</span>
+              </div>
+            )}
+
+            <p className="text-[11px] text-center text-slate-400">
+              JPEG, PNG, HEIC, WebP • Jusqu'à 15 Mo par photo • Qualité HD conservée
+            </p>
+
+            {/* Aperçu des photos sélectionnées avec bouton de suppression tactile bien visible */}
             {photos.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
                 {photos.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-xs"
+                    className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-xs"
                   >
                     <img
                       src={item.previewUrl}
                       alt="Aperçu photo chantier"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(item.id)}
-                        className="p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
-                        title="Supprimer la photo"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+
+                    {/* Bouton de suppression tactile permanent pour mobile */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePhoto(item.id);
+                      }}
+                      className="absolute top-1.5 right-1.5 z-10 w-7 h-7 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition touch-manipulation"
+                      title="Supprimer cette photo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+
                     <div className="absolute bottom-1 right-1 left-1 flex items-center justify-between pointer-events-none">
                       <span className="bg-sky-600/90 text-white text-[9px] px-1 py-0.5 rounded font-mono">
                         HD {item.originalSizeMb}M

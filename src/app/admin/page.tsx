@@ -1777,8 +1777,8 @@ export default function AdminPage() {
 
             {/* Modal d'édition d'un collaborateur */}
             {editingCollab && (
-              <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+              <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4">
+                <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                     <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
                       <Edit3 className="w-4 h-4 text-sky-600" />
@@ -1786,7 +1786,7 @@ export default function AdminPage() {
                     </h3>
                     <button
                       onClick={() => setEditingCollab(null)}
-                      className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                      className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 touch-manipulation"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -1802,7 +1802,7 @@ export default function AdminPage() {
                         required
                         value={editCollabNom}
                         onChange={(e) => setEditCollabNom(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800 font-medium"
                       />
                     </div>
 
@@ -1814,7 +1814,7 @@ export default function AdminPage() {
                         type="text"
                         value={editCollabRole}
                         onChange={(e) => setEditCollabRole(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                       />
                     </div>
 
@@ -1825,7 +1825,7 @@ export default function AdminPage() {
                       <select
                         value={editCollabSiteId}
                         onChange={(e) => setEditCollabSiteId(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base sm:text-xs text-slate-800"
                       >
                         {sites.map((s) => (
                           <option key={s.id} value={s.id}>
@@ -1841,9 +1841,9 @@ export default function AdminPage() {
                         id="collabActifCheck"
                         checked={editCollabActif}
                         onChange={(e) => setEditCollabActif(e.target.checked)}
-                        className="w-4 h-4 text-sky-600 rounded border-slate-300"
+                        className="w-5 h-5 text-sky-600 rounded border-slate-300 touch-manipulation"
                       />
-                      <label htmlFor="collabActifCheck" className="text-xs font-semibold text-slate-700">
+                      <label htmlFor="collabActifCheck" className="text-xs font-semibold text-slate-700 cursor-pointer">
                         Collaborateur actif (affiché dans le formulaire client)
                       </label>
                     </div>
@@ -1852,14 +1852,14 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => setEditingCollab(null)}
-                        className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                        className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition touch-manipulation"
                       >
                         Annuler
                       </button>
                       <button
                         type="submit"
                         disabled={isSavingCollab}
-                        className="px-5 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-xs transition disabled:opacity-50"
+                        className="px-5 py-2.5 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-xs transition disabled:opacity-50 touch-manipulation"
                       >
                         {isSavingCollab ? 'Enregistrement...' : 'Enregistrer les modifications'}
                       </button>
@@ -1989,8 +1989,8 @@ export default function AdminPage() {
 
             {/* Modal d'édition d'une agence */}
             {editingSite && (
-              <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-                <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+              <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+                <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
@@ -2003,9 +2003,9 @@ export default function AdminPage() {
                     </div>
                     <button
                       onClick={() => setEditingSite(null)}
-                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+                      className="p-2 text-slate-400 hover:text-slate-600 rounded-lg touch-manipulation"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </button>
                   </div>
 
@@ -2019,7 +2019,7 @@ export default function AdminPage() {
                         required
                         value={editSiteNom}
                         onChange={(e) => setEditSiteNom(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                       />
                     </div>
 
@@ -2032,7 +2032,7 @@ export default function AdminPage() {
                         required
                         value={editSiteSlug}
                         onChange={(e) => setEditSiteSlug(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800 font-mono"
                       />
                     </div>
 
@@ -2042,9 +2042,9 @@ export default function AdminPage() {
                         id="siteActifCheck"
                         checked={editSiteActif}
                         onChange={(e) => setEditSiteActif(e.target.checked)}
-                        className="w-4 h-4 text-sky-600 rounded border-slate-300"
+                        className="w-5 h-5 text-sky-600 rounded border-slate-300 touch-manipulation"
                       />
-                      <label htmlFor="siteActifCheck" className="text-xs font-semibold text-slate-700">
+                      <label htmlFor="siteActifCheck" className="text-xs font-semibold text-slate-700 cursor-pointer">
                         Agence active (visible dans les formulaires et widgets)
                       </label>
                     </div>
@@ -2053,14 +2053,14 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => setEditingSite(null)}
-                        className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                        className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition touch-manipulation"
                       >
                         Annuler
                       </button>
                       <button
                         type="submit"
                         disabled={isSavingSite}
-                        className="px-5 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-xs transition disabled:opacity-50"
+                        className="px-5 py-2.5 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-xs transition disabled:opacity-50 touch-manipulation"
                       >
                         {isSavingSite ? 'Enregistrement...' : 'Enregistrer les modifications'}
                       </button>
