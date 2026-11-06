@@ -319,56 +319,70 @@ function WidgetContent() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. BARRE D'ACTION & FILTRES INTERACTIFS                                  */}
+      {/* 2. BARRE D'ACTION & FILTRES INTERACTIFS (SLIDE CATEGORIES)               */}
       {/* ========================================================================= */}
-      <div className="flex items-center gap-2.5 overflow-x-auto pb-3 mb-6 touch-pan-x">
-        <button
-          onClick={() => setFilterType('all')}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
-            filterType === 'all'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <span>Tous les avis</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${filterType === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-            {rawAvisList.length}
-          </span>
-        </button>
-
-        {countWithPhotos > 0 && (
+      <div className="w-full overflow-x-auto pb-2 mb-6 touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="inline-flex items-center gap-2 p-1.5 bg-gradient-to-r from-sky-50 via-slate-50 to-teal-50/60 rounded-2xl border border-sky-100 shadow-xs">
           <button
-            onClick={() => setFilterType('photos')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
-              filterType === 'photos'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            onClick={() => setFilterType('all')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-manipulation ${
+              filterType === 'all'
+                ? 'bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 text-white shadow-md shadow-sky-500/25 border border-sky-400/40'
+                : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50/80 border border-slate-200/80 shadow-2xs'
             }`}
           >
-            <Camera className="w-3.5 h-3.5" />
-            <span>Avec photos de chantier</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${filterType === 'photos' ? 'bg-white/20 text-white' : 'bg-sky-50 text-sky-700'}`}>
-              {countWithPhotos}
+            <span>Tous les avis</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                filterType === 'all' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {rawAvisList.length}
             </span>
           </button>
-        )}
 
-        {count5Stars > 0 && (
-          <button
-            onClick={() => setFilterType('5stars')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
-              filterType === '5stars'
-                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Notes maximales 5/5</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${filterType === '5stars' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}`}>
-              {count5Stars}
-            </span>
-          </button>
-        )}
+          {countWithPhotos > 0 && (
+            <button
+              onClick={() => setFilterType('photos')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-manipulation ${
+                filterType === 'photos'
+                  ? 'bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 text-white shadow-md shadow-sky-500/25 border border-sky-400/40'
+                  : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50/80 border border-slate-200/80 shadow-2xs'
+              }`}
+            >
+              <Camera className={`w-3.5 h-3.5 ${filterType === 'photos' ? 'text-white' : 'text-sky-600'}`} />
+              <span>Avec photos de chantier</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  filterType === 'photos' ? 'bg-white/25 text-white' : 'bg-sky-100 text-sky-800'
+                }`}
+              >
+                {countWithPhotos}
+              </span>
+            </button>
+          )}
+
+          {count5Stars > 0 && (
+            <button
+              onClick={() => setFilterType('5stars')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-manipulation ${
+                filterType === '5stars'
+                  ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white shadow-md shadow-amber-500/25 border border-amber-400/40'
+                  : 'bg-white text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 border border-slate-200/80 shadow-2xs'
+              }`}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${filterType === '5stars' ? 'text-white' : 'text-amber-500'}`} />
+              <span>Notes maximales 5/5</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  filterType === '5stars' ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {count5Stars}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
