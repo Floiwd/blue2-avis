@@ -29,7 +29,9 @@ interface PhotoItem {
   thumbnailFile: File;
   previewUrl: string;
   originalSizeMb: string;
+  hdSizeKb: number;
   thumbnailSizeKb: number;
+  reductionPercent: number;
 }
 
 const MAX_PHOTOS = 8;
@@ -171,14 +173,16 @@ export function ReviewForm() {
       }
 
       try {
-        const result = await processPhotoForR2(file, 800);
+        const result = await processPhotoForR2(file, 1920, 800);
         newPhotoItems.push({
           id: `${Date.now()}-${i}-${Math.random()}`,
           originalFile: result.originalFile,
           thumbnailFile: result.thumbnailFile,
           previewUrl: result.previewUrl,
-          originalSizeMb: (result.originalSize / (1024 * 1024)).toFixed(1),
+          originalSizeMb: (result.rawSize / (1024 * 1024)).toFixed(1),
+          hdSizeKb: Math.round(result.hdSize / 1024),
           thumbnailSizeKb: Math.round(result.thumbnailSize / 1024),
+          reductionPercent: result.reductionPercent,
         });
       } catch (err: any) {
         console.warn('Erreur traitement photo:', file.name, err);
@@ -816,11 +820,11 @@ export function ReviewForm() {
                     </button>
 
                     <div className="absolute bottom-1 right-1 left-1 flex items-center justify-between pointer-events-none">
-                      <span className="bg-sky-600/90 text-white text-[9px] px-1 py-0.5 rounded font-mono">
-                        HD {item.originalSizeMb}M
+                      <span className="bg-emerald-600/90 text-white text-[9px] px-1 py-0.5 rounded font-mono font-bold">
+                        WebP -{item.reductionPercent}%
                       </span>
                       <span className="bg-slate-900/80 text-white text-[9px] px-1 py-0.5 rounded font-mono">
-                        ~{item.thumbnailSizeKb}k
+                        {item.hdSizeKb}k
                       </span>
                     </div>
                   </div>

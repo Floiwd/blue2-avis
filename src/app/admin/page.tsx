@@ -1289,47 +1289,49 @@ export default function AdminPage() {
 
             {/* Filtres secondaires : Agence & Recherche */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full md:w-auto">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-semibold text-slate-500">Filtrer par agence :</span>
+                  <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Filtrer par agence :</span>
                 </div>
-                <select
-                  value={filterSite}
-                  onChange={(e) => setFilterSite(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700"
-                >
-                  <option value="all">Toutes les agences</option>
-                  {sites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nom}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterCollab}
-                  onChange={(e) => setFilterCollab(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700"
-                >
-                  <option value="all">Tous les collaborateurs</option>
-                  {collaborateurs
-                    .filter((c) => filterSite === 'all' || c.site_id === filterSite)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nom}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+                  <select
+                    value={filterSite}
+                    onChange={(e) => setFilterSite(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700"
+                  >
+                    <option value="all">Toutes les agences</option>
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nom}
                       </option>
                     ))}
-                </select>
+                  </select>
+
+                  <select
+                    value={filterCollab}
+                    onChange={(e) => setFilterCollab(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700"
+                  >
+                    <option value="all">Tous les collaborateurs</option>
+                    {collaborateurs
+                      .filter((c) => filterSite === 'all' || c.site_id === filterSite)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nom}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
 
-              <div className="relative w-full sm:w-auto sm:min-w-[240px]">
+              <div className="relative w-full md:w-auto md:min-w-[240px]">
                 <input
                   type="text"
                   placeholder="Rechercher client, texte..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-base sm:text-xs text-slate-800"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
@@ -1496,11 +1498,11 @@ export default function AdminPage() {
                       </div>
 
                       {/* Actions modération */}
-                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-3">
+                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2.5 mt-3">
                         {isDeleted ? (
                           <button
                             onClick={() => handleRestoreAvis(avis.id)}
-                            className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition"
+                            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition touch-manipulation"
                           >
                             <RotateCcw className="w-4 h-4" />
                             <span>Restaurer l'avis immédiatement</span>
@@ -1510,7 +1512,7 @@ export default function AdminPage() {
                             {avis.statut === 'approuve' ? (
                               <button
                                 onClick={() => handleUpdateAvisStatut(avis.id, 'masque')}
-                                className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition font-medium border border-amber-200"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-amber-200 touch-manipulation"
                               >
                                 <EyeOff className="w-3.5 h-3.5" />
                                 <span>Masquer du public</span>
@@ -1518,7 +1520,7 @@ export default function AdminPage() {
                             ) : (
                               <button
                                 onClick={() => handleUpdateAvisStatut(avis.id, 'approuve')}
-                                className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition font-medium border border-emerald-200"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-emerald-200 shadow-xs touch-manipulation"
                               >
                                 <CheckCircle className="w-3.5 h-3.5" />
                                 <span>Approuver & Publier</span>
@@ -1527,11 +1529,11 @@ export default function AdminPage() {
 
                             <button
                               onClick={() => handleSoftDeleteAvis(avis.id)}
-                              className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 p-1.5 rounded-lg hover:bg-rose-50 transition"
+                              className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-rose-200 touch-manipulation shrink-0"
                               title="Déplacer dans la corbeille (restaurable pendant 7 jours)"
                             >
-                              <Trash2 className="w-4 h-4" />
-                              <span className="text-[11px] hidden sm:inline">Corbeille</span>
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Corbeille</span>
                             </button>
                           </>
                         )}
@@ -1563,7 +1565,7 @@ export default function AdminPage() {
                   <select
                     value={newCollabSiteId}
                     onChange={(e) => setNewCollabSiteId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base sm:text-xs text-slate-800"
                   >
                     {sites.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -1582,7 +1584,7 @@ export default function AdminPage() {
                     placeholder="Ex. : Jérôme DURAND"
                     value={newCollabNom}
                     onChange={(e) => setNewCollabNom(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                   />
                 </div>
                 <div>
@@ -1594,13 +1596,13 @@ export default function AdminPage() {
                     placeholder="Ex. : Responsable d'agence & Conseil"
                     value={newCollabRole}
                     onChange={(e) => setNewCollabRole(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                   />
                 </div>
                 <div className="flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition"
+                    className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition touch-manipulation"
                   >
                     Ajouter le collaborateur
                   </button>
@@ -1610,12 +1612,12 @@ export default function AdminPage() {
 
             {/* Filtre agence collaborateur */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">Filtrer par agence :</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Filtrer par agence :</span>
                 <select
                   value={collabFilterSite}
                   onChange={(e) => setCollabFilterSite(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700"
+                  className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 sm:py-1.5 text-xs font-medium text-slate-700"
                 >
                   <option value="all">Toutes les agences ({sites.length})</option>
                   {sites.map((s) => (
@@ -1632,7 +1634,7 @@ export default function AdminPage() {
                   placeholder="Rechercher collaborateur..."
                   value={collabSearchTerm}
                   onChange={(e) => setCollabSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 sm:py-1.5 text-base sm:text-xs text-slate-800"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
@@ -1741,22 +1743,22 @@ export default function AdminPage() {
                     </div>
 
                     {/* Boutons d'action pour le collaborateur */}
-                    <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 mt-3">
+                    <div className="pt-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-3">
                       <button
                         onClick={() => {
                           setFilterCollab(collab.id);
                           setTab('avis');
                         }}
-                        className="text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-sky-50 transition"
+                        className="w-full sm:w-auto text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center justify-center sm:justify-start gap-1 py-2 sm:py-1.5 px-3 rounded-xl hover:bg-sky-50 transition bg-sky-50/50 sm:bg-transparent touch-manipulation"
                       >
                         <span>Voir ses avis ({stats.total_avis})</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => handleStartEditCollab(collab)}
-                          className="text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                          className="flex-1 sm:flex-none justify-center text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 sm:py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition touch-manipulation"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Modifier</span>
@@ -1764,10 +1766,11 @@ export default function AdminPage() {
 
                         <button
                           onClick={() => handleDeleteCollab(collab)}
-                          className="text-xs text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-rose-50 transition"
+                          className="flex-none text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 sm:py-1.5 rounded-xl flex items-center gap-1.5 transition border border-rose-200 touch-manipulation"
                           title="Supprimer ce collaborateur"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Supprimer</span>
                         </button>
                       </div>
                     </div>
@@ -1903,7 +1906,7 @@ export default function AdminPage() {
                         );
                       }
                     }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                   />
                 </div>
                 <div>
@@ -1916,13 +1919,13 @@ export default function AdminPage() {
                     placeholder="toulouse"
                     value={newSiteSlug}
                     onChange={(e) => setNewSiteSlug(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800 font-mono"
                   />
                 </div>
                 <div className="flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition"
+                    className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition touch-manipulation"
                   >
                     Enregistrer l'agence
                   </button>
@@ -1942,44 +1945,47 @@ export default function AdminPage() {
                   return (
                     <div
                       key={site.id}
-                      className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition"
+                      className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:bg-slate-50/50 transition"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-sm text-slate-900">{site.nom}</h5>
-                          <span className="text-[10px] bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded-lg">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h5 className="font-bold text-sm sm:text-base text-slate-900 break-words">{site.nom}</h5>
+                          <span className="text-[10px] bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded-lg shrink-0">
                             {site.slug}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-1">
                           {countCollabs} collaborateur(s) • {countAvis} avis déposé(s)
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                         <button
                           onClick={() => handleToggleSite(site)}
-                          className={`text-xs px-3 py-1.5 rounded-xl font-bold border transition ${
+                          className={`text-xs px-3.5 py-2 rounded-xl font-bold border transition flex items-center gap-1.5 touch-manipulation ${
                             site.actif
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                               : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                           }`}
                         >
-                          {site.actif ? 'Actif' : 'Inactif'}
+                          <span className={`w-2 h-2 rounded-full ${site.actif ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                          <span>{site.actif ? 'Actif' : 'Inactif'}</span>
                         </button>
                         <button
                           onClick={() => handleStartEditSite(site)}
-                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition"
+                          className="px-3.5 py-2 text-xs font-bold bg-slate-100 hover:bg-sky-50 text-slate-700 hover:text-sky-700 rounded-xl transition flex items-center gap-1.5 border border-slate-200 touch-manipulation"
                           title="Modifier l'agence"
                         >
-                          <Edit3 className="w-4 h-4" />
+                          <Edit3 className="w-3.5 h-3.5 text-sky-600" />
+                          <span>Modifier</span>
                         </button>
                         <button
                           onClick={() => handleDeleteSite(site)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          className="px-3.5 py-2 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl transition flex items-center gap-1.5 border border-rose-200 touch-manipulation"
                           title="Supprimer l'agence"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Supprimer</span>
                         </button>
                       </div>
                     </div>
@@ -2112,7 +2118,7 @@ export default function AdminPage() {
                         setSendSiteId(e.target.value);
                         setSendCollabId('');
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base sm:text-xs text-slate-800"
                     >
                       {sites.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -2129,7 +2135,7 @@ export default function AdminPage() {
                     <select
                       value={sendCollabId}
                       onChange={(e) => setSendCollabId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base sm:text-xs text-slate-800"
                     >
                       <option value="">Sélectionner un collaborateur</option>
                       {collaborateurs
@@ -2152,7 +2158,7 @@ export default function AdminPage() {
                       placeholder="Dubois"
                       value={sendNom}
                       onChange={(e) => setSendNom(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                     />
                   </div>
                   <div>
@@ -2163,7 +2169,7 @@ export default function AdminPage() {
                       placeholder="Pierre"
                       value={sendPrenom}
                       onChange={(e) => setSendPrenom(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                     />
                   </div>
                 </div>
@@ -2177,7 +2183,7 @@ export default function AdminPage() {
                       placeholder="client@gmail.com"
                       value={sendEmail}
                       onChange={(e) => setSendEmail(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                     />
                   </div>
                   <div>
@@ -2187,7 +2193,7 @@ export default function AdminPage() {
                       placeholder="06 12 34 56 78"
                       value={sendTel}
                       onChange={(e) => setSendTel(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                     />
                   </div>
                 </div>
@@ -2199,7 +2205,7 @@ export default function AdminPage() {
                     placeholder="Nom d'entreprise (optionnel)"
                     value={sendSociete}
                     onChange={(e) => setSendSociete(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                   />
                 </div>
 
@@ -2218,7 +2224,7 @@ export default function AdminPage() {
                     placeholder="Ex. : Construction piscine miroir 9x4 avec volet immergé"
                     value={sendPrestation}
                     onChange={(e) => setSendPrestation(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-slate-800"
                   />
                 </div>
 
@@ -2265,13 +2271,13 @@ export default function AdminPage() {
           <div className="space-y-6">
             {/* Intégration Widget sur site externe (ex: Protech Piscine) */}
             <div className="bg-white rounded-3xl p-6 border border-sky-200 shadow-sm space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
                     <Code2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 text-base">
+                    <h3 className="font-bold text-slate-900 text-base leading-snug">
                       Intégration du Widget Avis sur votre site web
                     </h3>
                     <p className="text-xs text-slate-500">
@@ -2280,12 +2286,15 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-bold text-slate-600 hidden sm:inline">Agence :</label>
+                <div className="w-full sm:w-auto flex flex-col sm:flex-row sm:items-center gap-1.5 pt-1 sm:pt-0">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 whitespace-nowrap">
+                    <Building className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Sélectionner l'agence :</span>
+                  </label>
                   <select
                     value={widgetSiteSlug}
                     onChange={(e) => setWidgetSiteSlug(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800"
+                    className="w-full sm:w-auto bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs focus:ring-2 focus:ring-sky-500 outline-hidden"
                   >
                     {sites.map((s) => (
                       <option key={s.id} value={s.slug}>
@@ -2298,7 +2307,7 @@ export default function AdminPage() {
 
               {/* Option 1: Code Iframe rapide */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <span className="w-5 h-5 rounded-full bg-sky-600 text-white text-[11px] flex items-center justify-center font-bold">1</span>
                     Intégration Iframe (Copier-Coller universel pour n'importe quel site)
@@ -2310,7 +2319,7 @@ export default function AdminPage() {
                       );
                       alert('Code Iframe copié dans le presse-papier !');
                     }}
-                    className="text-xs text-sky-600 font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition touch-manipulation"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>Copier le code</span>
@@ -2323,7 +2332,7 @@ export default function AdminPage() {
 
               {/* Option 2: Script JS automatique */}
               <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <span className="w-5 h-5 rounded-full bg-sky-600 text-white text-[11px] flex items-center justify-center font-bold">2</span>
                     Balise HTML + Script dynamique
@@ -2335,7 +2344,7 @@ export default function AdminPage() {
                       );
                       alert('Script copié !');
                     }}
-                    className="text-xs text-sky-600 font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition touch-manipulation"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>Copier le script</span>
@@ -2348,7 +2357,7 @@ export default function AdminPage() {
 
               {/* Option 3: API JSON directe */}
               <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <span className="w-5 h-5 rounded-full bg-sky-600 text-white text-[11px] flex items-center justify-center font-bold">3</span>
                     API JSON Directe (Pour React / Next.js / WordPress / PHP)
@@ -2357,7 +2366,7 @@ export default function AdminPage() {
                     href={`https://blue2-avis.vercel.app/api/avis?site=${widgetSiteSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-sky-600 font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition touch-manipulation"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Ouvrir l'API JSON</span>
