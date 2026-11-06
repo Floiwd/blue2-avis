@@ -27,16 +27,23 @@ export async function PATCH(
     const sql = getDb();
     if (!sql) throw new Error('Database client unavailable');
 
-    if (body.statut && ['approuve', 'masque', 'en_attente'].includes(body.statut)) {
+    // 1. Restauration de l'avis depuis la corbeille
+    if (body.action === 'restore') {
+      const statutToSet =
+        body.statut && ['approuve', 'masque', 'en_attente'].includes(body.statut)
+          ? body.statut
+          : 'approuve';
+
       const rows = await sql`
         UPDATE avis
-        SET statut = ${body.statut}
+        SET deleted_at = NULL, statut = ${statutToSet}
         WHERE id = ${id}
         RETURNING *
       `;
       return NextResponse.json({ success: true, avis: rows[0] });
     }
 
+    // 2. Déplacement dans la corbeille (suppression logique)
     if (body.action === 'soft_delete') {
       const rows = await sql`
         UPDATE avis
@@ -45,10 +52,13 @@ export async function PATCH(
         RETURNING *
       `;
       return NextResponse.json({ success: true, avis: rows[0] });
-    } else if (body.action === 'restore') {
+    }
+
+    // 3. Modification classique du statut (approuver / masquer)
+    if (body.statut && ['approuve', 'masque', 'en_attente'].includes(body.statut)) {
       const rows = await sql`
         UPDATE avis
-        SET deleted_at = NULL
+        SET statut = ${body.statut}
         WHERE id = ${id}
         RETURNING *
       `;
