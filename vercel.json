@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/backup-and-keepalive",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
