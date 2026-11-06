@@ -75,7 +75,7 @@ function WidgetContent() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'photos' | '5stars'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'photos' | '5stars' | 'piscine' | 'spa' | 'renov'>('all');
   const [showCriteriaDetail, setShowCriteriaDetail] = useState(false);
   const [expandedAvisId, setExpandedAvisId] = useState<string | null>(null);
 
@@ -139,17 +139,37 @@ function WidgetContent() {
   const stats = data?.stats;
   const rawAvisList = data?.avis || [];
 
+  // Détection intelligente des spécialités piscines / spas / rénovation
+  const isPiscineAvis = (a: WidgetAvis) => {
+    const text = `${a.intitule_prestation || ''} ${a.commentaire || ''}`.toLowerCase();
+    return /piscine|construct|bassin|coque|béton|miroir|couloir|terrassement|nage/i.test(text);
+  };
+  const isSpaAvis = (a: WidgetAvis) => {
+    const text = `${a.intitule_prestation || ''} ${a.commentaire || ''}`.toLowerCase();
+    return /spa|balnéo|jacuzzi|détente|bain/i.test(text);
+  };
+  const isRenovAvis = (a: WidgetAvis) => {
+    const text = `${a.intitule_prestation || ''} ${a.commentaire || ''}`.toLowerCase();
+    return /rénov|liner|membrane|volet|pompe|étanch|filtration|abri|sécurité|bâche|traitement/i.test(text);
+  };
+
+  const countWithPhotos = rawAvisList.filter((a) => a.photos && a.photos.length > 0).length;
+  const count5Stars = rawAvisList.filter((a) => Math.round(a.notes.moyenne) === 5).length;
+  const countPiscine = rawAvisList.filter(isPiscineAvis).length;
+  const countSpa = rawAvisList.filter(isSpaAvis).length;
+  const countRenov = rawAvisList.filter(isRenovAvis).length;
+
   // Filtrage local
   const filteredAvis = rawAvisList
     .filter((a) => {
       if (filterType === 'photos') return a.photos && a.photos.length > 0;
       if (filterType === '5stars') return Math.round(a.notes.moyenne) === 5;
+      if (filterType === 'piscine') return isPiscineAvis(a);
+      if (filterType === 'spa') return isSpaAvis(a);
+      if (filterType === 'renov') return isRenovAvis(a);
       return true;
     })
     .slice(0, maxReviews);
-
-  const countWithPhotos = rawAvisList.filter((a) => a.photos && a.photos.length > 0).length;
-  const count5Stars = rawAvisList.filter((a) => Math.round(a.notes.moyenne) === 5).length;
 
   // Calcul taux recommandation
   const countRecommandes = rawAvisList.filter((a) => a.notes.recommandation >= 4).length;
@@ -207,58 +227,70 @@ function WidgetContent() {
       />
 
       {/* ========================================================================= */}
-      {/* 1. EN-TÊTE ÉLÉGANT & NATURELLEMENT INTÉGRÉ AU SITE HÔTE                   */}
+      {/* 1. EN-TÊTE PRESTIGE & EXCELLENCE PISCINES                                */}
       {/* ========================================================================= */}
-      <div className="pb-6 mb-6 border-b border-slate-200/80">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
+      <div className="bg-gradient-to-br from-white via-slate-50/80 to-sky-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(14,165,233,0.08)] mb-6 relative overflow-hidden">
+        {/* Ligne d'accent lumineuse dorée/cyan au sommet */}
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-sky-500 via-teal-400 to-amber-400" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200/70">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold tracking-wide mb-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Avis Clients Certifiés • Norme AFNOR</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-[11px] font-bold tracking-wider uppercase shadow-xs mb-3">
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>Avis Vérifiés • Norme AFNOR NF Z74-501</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {data?.site?.nom || 'Blue 2.0'}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>Savoir-faire pisciniste & aménagements aquatiques</span>
-              <span className="text-slate-300">•</span>
-              <span className="font-bold text-emerald-700 flex items-center gap-1">
-                <ThumbsUp className="w-3.5 h-3.5" />
-                {tauxRecommandation}% de clients recommandent
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sky-600 block">
+                Pisciniste & Aménagements d'Excellence
               </span>
-            </p>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                {data?.site?.nom || 'Blue 2.0'}
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 mt-3.5 text-xs">
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 font-bold px-3 py-1 rounded-xl border border-emerald-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>{tauxRecommandation}% de clients recommandent</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-800 font-bold px-3 py-1 rounded-xl border border-sky-200">
+                <ShieldCheck className="w-4 h-4 text-sky-600" />
+                <span>Contrôle & Authenticité Garantis</span>
+              </span>
+            </div>
           </div>
 
-          {/* Synthèse Note & Bouton d'action */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-slate-50/90 hover:bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 transition shadow-2xs">
+          {/* Plaque Note & Avis de Prestige */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-sky-100 shadow-sm shrink-0">
             <div className="text-left sm:text-right">
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
                   {stats?.moyenne_globale ? stats.moyenne_globale.toFixed(1) : '5.0'}
                 </span>
-                <span className="text-xs font-bold text-slate-400">/ 5</span>
+                <span className="text-sm font-bold text-slate-400">/ 5</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
                 Sur {stats?.total || rawAvisList.length} avis certifié{(stats?.total || rawAvisList.length) > 1 ? 's' : ''}
               </p>
             </div>
 
             <div className="flex flex-col items-start sm:items-end gap-1">
-              <div className="flex items-center gap-0.5 text-sky-500">
+              <div className="flex items-center gap-1 text-sky-500">
                 {[1, 2, 3, 4, 5].map((drop) => {
                   const active = drop <= Math.round(stats?.moyenne_globale || 5);
                   return (
                     <Droplet
                       key={drop}
-                      className={`w-5 h-5 transition-transform hover:scale-115 ${
+                      className={`w-6 h-6 transition-transform hover:scale-115 drop-shadow-xs ${
                         active ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
                       }`}
                     />
                   );
                 })}
               </div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-sky-700">
-                Excellente réputation
+              <span className="text-[10px] uppercase font-extrabold tracking-widest text-sky-600">
+                Excellence Aquatique
               </span>
             </div>
 
@@ -266,7 +298,7 @@ function WidgetContent() {
               href={`https://blue2-avis.vercel.app/?site=${siteSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 touch-manipulation"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white text-xs font-bold rounded-xl shadow-md shadow-sky-600/20 transition active:scale-95 touch-manipulation"
             >
               <span>Déposer un avis</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -313,16 +345,17 @@ function WidgetContent() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. BARRE D'ACTION & FILTRES INTERACTIFS (SLIDE CATEGORIES)               */}
+      {/* 2. CATÉGORIES D'AVIS OPTIMISÉES & INTÉRACTIVES (SANS BLOCAGE DE SCROLL)  */}
       {/* ========================================================================= */}
-      <div className="w-full overflow-x-auto pb-2 mb-6 touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="inline-flex items-center gap-2 p-1.5 bg-gradient-to-r from-sky-50 via-slate-50 to-teal-50/60 rounded-2xl border border-sky-100 shadow-xs">
+      <div className="mb-6">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tous */}
           <button
             onClick={() => setFilterType('all')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-manipulation ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 touch-manipulation ${
               filterType === 'all'
-                ? 'bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 text-white shadow-md shadow-sky-500/25 border border-sky-400/40'
-                : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50/80 border border-slate-200/80 shadow-2xs'
+                ? 'bg-gradient-to-r from-sky-600 to-teal-600 text-white shadow-md shadow-sky-600/20 border border-sky-400/40'
+                : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 shadow-2xs'
             }`}
           >
             <span>Tous les avis</span>
@@ -335,13 +368,14 @@ function WidgetContent() {
             </span>
           </button>
 
+          {/* Avec photos */}
           {countWithPhotos > 0 && (
             <button
               onClick={() => setFilterType('photos')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-manipulation ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 touch-manipulation ${
                 filterType === 'photos'
-                  ? 'bg-gradient-to-r from-sky-600 via-sky-500 to-teal-500 text-white shadow-md shadow-sky-500/25 border border-sky-400/40'
-                  : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50/80 border border-slate-200/80 shadow-2xs'
+                  ? 'bg-gradient-to-r from-sky-600 to-teal-600 text-white shadow-md shadow-sky-600/20 border border-sky-400/40'
+                  : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 shadow-2xs'
               }`}
             >
               <Camera className={`w-3.5 h-3.5 ${filterType === 'photos' ? 'text-white' : 'text-sky-600'}`} />
@@ -356,17 +390,18 @@ function WidgetContent() {
             </button>
           )}
 
+          {/* Notes 5/5 */}
           {count5Stars > 0 && (
             <button
               onClick={() => setFilterType('5stars')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 touch-manipulation ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 touch-manipulation ${
                 filterType === '5stars'
-                  ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white shadow-md shadow-amber-500/25 border border-amber-400/40'
-                  : 'bg-white text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 border border-slate-200/80 shadow-2xs'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20 border border-amber-400/40'
+                  : 'bg-white text-slate-700 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 shadow-2xs'
               }`}
             >
               <Sparkles className={`w-3.5 h-3.5 ${filterType === '5stars' ? 'text-white' : 'text-amber-500'}`} />
-              <span>Notes maximales 5/5</span>
+              <span>Excellence 5/5</span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
                   filterType === '5stars' ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-800'
@@ -374,6 +409,83 @@ function WidgetContent() {
               >
                 {count5Stars}
               </span>
+            </button>
+          )}
+
+          {/* Construction piscine */}
+          {countPiscine > 0 && (
+            <button
+              onClick={() => setFilterType('piscine')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 touch-manipulation ${
+                filterType === 'piscine'
+                  ? 'bg-gradient-to-r from-sky-600 to-teal-600 text-white shadow-md shadow-sky-600/20 border border-sky-400/40'
+                  : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 shadow-2xs'
+              }`}
+            >
+              <span>🏊</span>
+              <span>Construction piscine</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  filterType === 'piscine' ? 'bg-white/25 text-white' : 'bg-sky-100 text-sky-800'
+                }`}
+              >
+                {countPiscine}
+              </span>
+            </button>
+          )}
+
+          {/* Spas & Détente */}
+          {countSpa > 0 && (
+            <button
+              onClick={() => setFilterType('spa')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 touch-manipulation ${
+                filterType === 'spa'
+                  ? 'bg-gradient-to-r from-sky-600 to-teal-600 text-white shadow-md shadow-sky-600/20 border border-sky-400/40'
+                  : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 shadow-2xs'
+              }`}
+            >
+              <span>🫧</span>
+              <span>Spas & Balnéo</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  filterType === 'spa' ? 'bg-white/25 text-white' : 'bg-teal-100 text-teal-800'
+                }`}
+              >
+                {countSpa}
+              </span>
+            </button>
+          )}
+
+          {/* Rénovation & Équipements */}
+          {countRenov > 0 && (
+            <button
+              onClick={() => setFilterType('renov')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 touch-manipulation ${
+                filterType === 'renov'
+                  ? 'bg-gradient-to-r from-sky-600 to-teal-600 text-white shadow-md shadow-sky-600/20 border border-sky-400/40'
+                  : 'bg-white text-slate-700 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 shadow-2xs'
+              }`}
+            >
+              <span>🛠️</span>
+              <span>Rénovation & Équipements</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  filterType === 'renov' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {countRenov}
+              </span>
+            </button>
+          )}
+
+          {/* Bouton reset si filtre actif */}
+          {filterType !== 'all' && (
+            <button
+              onClick={() => setFilterType('all')}
+              className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition flex items-center gap-1 touch-manipulation"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Réinitialiser</span>
             </button>
           )}
         </div>
