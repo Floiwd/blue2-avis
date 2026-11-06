@@ -92,9 +92,12 @@
       iframe.style.minHeight = minHeight;
       iframe.style.border = 'none';
       iframe.style.overflow = 'hidden';
-      iframe.style.borderRadius = '16px';
+      iframe.style.borderRadius = '0';
+      iframe.style.background = 'transparent';
+      iframe.style.colorScheme = 'light';
       iframe.style.display = 'block';
       iframe.style.transition = 'height 0.2s ease';
+      iframe.setAttribute('allowtransparency', 'true');
       iframe.title = 'Avis Clients Certifiés Blue 2.0';
       iframe.loading = 'lazy';
 

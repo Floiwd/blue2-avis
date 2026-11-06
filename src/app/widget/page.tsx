@@ -199,7 +199,7 @@ function WidgetContent() {
   ];
 
   return (
-    <div className="font-sans antialiased bg-transparent p-2 sm:p-5 text-slate-800 max-w-5xl mx-auto w-full max-w-full overflow-x-hidden selection:bg-sky-500 selection:text-white">
+    <div className="font-sans antialiased bg-transparent p-1 sm:p-2 text-slate-800 max-w-5xl mx-auto w-full max-w-full overflow-x-hidden selection:bg-sky-500 selection:text-white">
       {/* Balise SEO JSON-LD pour Google Rich Snippets */}
       <script
         type="application/ld+json"
@@ -207,61 +207,57 @@ function WidgetContent() {
       />
 
       {/* ========================================================================= */}
-      {/* 1. HERO PRESTIGE & SCEAU DE CONFIANCE CLIENT                             */}
+      {/* 1. EN-TÊTE ÉLÉGANT & NATURELLEMENT INTÉGRÉ AU SITE HÔTE                   */}
       {/* ========================================================================= */}
-      <div className="relative rounded-[32px] p-6 sm:p-8 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 text-white shadow-2xl border border-sky-800/40 mb-7 overflow-hidden">
-        {/* Lueur d'eau lagon en arrière-plan */}
-        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-sky-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-teal-500/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
+      <div className="pb-6 mb-6 border-b border-slate-200/80">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-bold tracking-wide mb-3 backdrop-blur-xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Avis 100% Vérifiés & Conformes AFNOR</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold tracking-wide mb-2.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Avis Clients Certifiés • Norme AFNOR</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {data?.site?.nom || 'Blue 2.0'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Savoir-faire pisciniste & aménagements aquatiques</span>
-              <span className="hidden sm:inline text-white/30">•</span>
-              <span className="font-bold text-emerald-400 flex items-center gap-1">
+              <span className="text-slate-300">•</span>
+              <span className="font-bold text-emerald-700 flex items-center gap-1">
                 <ThumbsUp className="w-3.5 h-3.5" />
                 {tauxRecommandation}% de clients recommandent
               </span>
             </p>
           </div>
 
-          {/* Carte score global flottante */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-white/10 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-white/15 shadow-inner">
+          {/* Synthèse Note & Bouton d'action */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-slate-50/90 hover:bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 transition shadow-2xs">
             <div className="text-left sm:text-right">
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+                <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
                   {stats?.moyenne_globale ? stats.moyenne_globale.toFixed(1) : '5.0'}
                 </span>
-                <span className="text-sm font-bold text-sky-300">/ 5</span>
+                <span className="text-xs font-bold text-slate-400">/ 5</span>
               </div>
-              <p className="text-[11px] text-slate-300 font-medium mt-0.5">
+              <p className="text-[11px] text-slate-500 font-medium">
                 Sur {stats?.total || rawAvisList.length} avis certifié{(stats?.total || rawAvisList.length) > 1 ? 's' : ''}
               </p>
             </div>
 
-            <div className="flex flex-col items-start sm:items-end gap-1.5">
-              <div className="flex items-center gap-1 text-sky-400">
+            <div className="flex flex-col items-start sm:items-end gap-1">
+              <div className="flex items-center gap-0.5 text-sky-500">
                 {[1, 2, 3, 4, 5].map((drop) => {
                   const active = drop <= Math.round(stats?.moyenne_globale || 5);
                   return (
                     <Droplet
                       key={drop}
-                      className={`w-6 h-6 transition-transform hover:scale-115 drop-shadow-[0_2px_8px_rgba(56,189,248,0.4)] ${
-                        active ? 'text-sky-400 fill-sky-400' : 'text-slate-600 fill-slate-700'
+                      className={`w-5 h-5 transition-transform hover:scale-115 ${
+                        active ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
                       }`}
                     />
                   );
                 })}
               </div>
-              <span className="text-[10px] uppercase font-extrabold tracking-widest text-sky-300">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-sky-700">
                 Excellente réputation
               </span>
             </div>
@@ -270,7 +266,7 @@ function WidgetContent() {
               href={`https://blue2-avis.vercel.app/?site=${siteSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-sky-500 via-sky-600 to-teal-500 hover:from-sky-400 hover:to-teal-400 text-white text-xs font-extrabold rounded-xl shadow-lg shadow-sky-500/25 transition active:scale-95 touch-manipulation"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 touch-manipulation"
             >
               <span>Déposer un avis</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -278,35 +274,33 @@ function WidgetContent() {
           </div>
         </div>
 
-        {/* Baromètre de satisfaction détaillé (6 critères) */}
-        <div className="pt-4">
+        {/* Baromètre de satisfaction détaillé (6 critères) avec fond clair aéré */}
+        <div className="mt-4 pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
-            className="text-xs font-bold text-sky-300 hover:text-white flex items-center gap-2 transition touch-manipulation group"
+            className="text-xs font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1.5 transition touch-manipulation"
           >
-            <span className="group-hover:underline">
-              {showCriteriaDetail ? 'Masquer le baromètre détaillé' : 'Voir le baromètre de satisfaction certifié (6 critères d\'excellence)'}
-            </span>
-            {showCriteriaDetail ? <ChevronUp className="w-4 h-4 text-sky-400" /> : <ChevronDown className="w-4 h-4 text-sky-400" />}
+            <span>{showCriteriaDetail ? 'Masquer le baromètre détaillé' : 'Voir le baromètre de satisfaction certifié (6 critères d\'excellence)'}</span>
+            {showCriteriaDetail ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
           {showCriteriaDetail && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-4 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 animate-in fade-in duration-200">
               {criteriaBreakdown.map((crit, idx) => {
                 const IconComponent = crit.icon;
                 return (
-                  <div key={idx} className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10 hover:border-white/20 transition">
+                  <div key={idx} className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
                     <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                        <IconComponent className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                        <IconComponent className="w-3.5 h-3.5 text-sky-600" />
                         <span>{crit.label}</span>
                       </span>
-                      <strong className="font-black text-sky-300 text-sm">{crit.note.toFixed(1)}/5</strong>
+                      <strong className="font-extrabold text-sky-700 text-xs">{crit.note.toFixed(1)}/5</strong>
                     </div>
-                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-sky-400 via-cyan-400 to-teal-400 rounded-full shadow-[0_0_12px_rgba(56,189,248,0.5)] transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-sky-400 via-sky-500 to-teal-500 rounded-full"
                         style={{ width: `${(crit.note / 5) * 100}%` }}
                       />
                     </div>
