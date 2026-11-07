@@ -24,6 +24,7 @@ import {
   Layers,
   Sparkle,
   Scale,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 interface WidgetAvis {
@@ -323,8 +324,13 @@ function WidgetContent() {
             </div>
           </div>
 
-          {/* Plaque Note Globale & Avis de Prestige */}
-          <div className="flex items-center gap-5 bg-white/95 backdrop-blur-sm px-6 py-4 rounded-2xl border border-slate-200/90 shadow-sm shrink-0 self-start lg:self-center">
+          {/* Plaque Note Globale & Avis de Prestige - Cliquable pour afficher les 6 critères */}
+          <button
+            type="button"
+            onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
+            className="flex items-center gap-5 bg-white/95 hover:bg-white hover:border-sky-300 hover:shadow-md transition-all duration-200 px-6 py-4 rounded-2xl border border-slate-200/90 shadow-sm shrink-0 self-start lg:self-center cursor-pointer text-left group"
+            title={showCriteriaDetail ? 'Masquer le détail des critères' : 'Cliquer pour détailler la note avec les 6 critères'}
+          >
             <div className="text-left sm:text-right">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
@@ -346,30 +352,39 @@ function WidgetContent() {
                   return (
                     <Droplet
                       key={drop}
-                      className={`w-5 h-5 transition-transform hover:scale-110 drop-shadow-xs ${
+                      className={`w-5 h-5 transition-transform group-hover:scale-110 drop-shadow-xs ${
                         active ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
                       }`}
                     />
                   );
                 })}
               </div>
-              <span className="text-[10px] uppercase font-extrabold tracking-widest text-sky-600">
-                Excellence Aquatique
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-extrabold tracking-widest text-sky-600">
+                  Excellence Aquatique
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-full border border-sky-200/70 group-hover:bg-sky-100 transition">
+                  <span>{showCriteriaDetail ? '▲ Masquer' : '▼ 6 critères'}</span>
+                </span>
+              </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Baromètre de satisfaction détaillé (6 critères) avec fond clair aéré */}
         <div className="mt-4 pt-3 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
-            className="text-xs font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1.5 transition touch-manipulation"
-          >
-            <span>{showCriteriaDetail ? 'Masquer le baromètre détaillé' : 'Voir le baromètre de satisfaction certifié (6 critères d\'excellence)'}</span>
-            {showCriteriaDetail ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
+              className="text-xs font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1.5 transition touch-manipulation group"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-sky-600 group-hover:rotate-12 transition-transform" />
+              <span>{showCriteriaDetail ? 'Masquer le baromètre détaillé' : 'Détailler la note globale (les 6 critères de satisfaction certifiés)'}</span>
+              {showCriteriaDetail ? <ChevronUp className="w-3.5 h-3.5 text-sky-600" /> : <ChevronDown className="w-3.5 h-3.5 text-sky-600" />}
+            </button>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">Évaluations certifiées AFNOR NF Z74-501</span>
+          </div>
 
           {showCriteriaDetail && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 animate-in fade-in duration-200">
@@ -643,12 +658,17 @@ function WidgetContent() {
                         </div>
                       </div>
 
-                      {/* Note en gouttes lagon */}
-                      <div className="flex items-center gap-1 bg-sky-50/90 px-3 py-1.5 rounded-2xl border border-sky-100 shadow-2xs">
+                      {/* Note en gouttes lagon - cliquable pour voir le détail des critères */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAvisId(isCriteriaExpanded ? null : avis.id)}
+                        className="flex items-center gap-1 bg-sky-50/90 hover:bg-sky-100/90 px-3 py-1.5 rounded-2xl border border-sky-100 hover:border-sky-300 shadow-2xs transition group/badge cursor-pointer"
+                        title={isCriteriaExpanded ? 'Masquer le détail des notes' : 'Cliquer pour détailler la note (6 critères)'}
+                      >
                         {[1, 2, 3, 4, 5].map((d) => (
                           <Droplet
                             key={d}
-                            className={`w-3.5 h-3.5 ${
+                            className={`w-3.5 h-3.5 transition-transform group-hover/badge:scale-110 ${
                               d <= Math.round(avis.notes.moyenne)
                                 ? 'text-sky-500 fill-sky-500 drop-shadow-[0_1px_3px_rgba(14,165,233,0.3)]'
                                 : 'text-slate-200 fill-slate-100'
@@ -658,7 +678,12 @@ function WidgetContent() {
                         <span className="text-xs font-black text-sky-900 ml-1">
                           {avis.notes.moyenne.toFixed(1)}
                         </span>
-                      </div>
+                        <ChevronDown
+                          className={`w-3 h-3 text-sky-600 transition-transform ml-0.5 ${
+                            isCriteriaExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
                     </div>
 
                     {/* Prestation & Collaborateur */}
@@ -686,43 +711,50 @@ function WidgetContent() {
                       </div>
                     )}
 
-                    {/* Accordéon micro-notes de ce client */}
+                    {/* Accordéon micro-notes de ce client avec baromètres et icônes */}
                     <div className="mb-3">
                       <button
                         type="button"
                         onClick={() => setExpandedAvisId(isCriteriaExpanded ? null : avis.id)}
-                        className="text-[11px] font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1 transition"
+                        className="text-[11px] font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1.5 transition py-1 touch-manipulation group/btn"
                       >
-                        <span>{isCriteriaExpanded ? 'Masquer le détail des 6 notes' : 'Détail des 6 critères attribués par ce client'}</span>
-                        {isCriteriaExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        <SlidersHorizontal className="w-3 h-3 text-sky-600 group-hover/btn:rotate-12 transition-transform" />
+                        <span>{isCriteriaExpanded ? 'Masquer le détail des critères' : 'Détailler la note (6 critères d\'évaluation)'}</span>
+                        {isCriteriaExpanded ? <ChevronUp className="w-3.5 h-3.5 text-sky-600" /> : <ChevronDown className="w-3.5 h-3.5 text-sky-600" />}
                       </button>
 
                       {isCriteriaExpanded && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 animate-in fade-in duration-150">
-                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                            <span className="text-slate-500">Conseil :</span>
-                            <strong className="text-sky-700">{avis.notes.conseil}/5</strong>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                            <span className="text-slate-500">Choix :</span>
-                            <strong className="text-sky-700">{avis.notes.diversite}/5</strong>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                            <span className="text-slate-500">Propreté :</span>
-                            <strong className="text-sky-700">{avis.notes.proprete}/5</strong>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                            <span className="text-slate-500">Délais :</span>
-                            <strong className="text-sky-700">{avis.notes.engagements}/5</strong>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                            <span className="text-slate-500">Qualité/Prix :</span>
-                            <strong className="text-sky-700">{avis.notes.qualite_prix}/5</strong>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                            <span className="text-slate-500">Recommandation :</span>
-                            <strong className="text-sky-700">{avis.notes.recommandation}/5</strong>
-                          </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 animate-in fade-in duration-200">
+                          {[
+                            { label: 'Conseil', note: avis.notes.conseil, icon: Compass },
+                            { label: 'Choix', note: avis.notes.diversite, icon: Layers },
+                            { label: 'Propreté', note: avis.notes.proprete, icon: Sparkle },
+                            { label: 'Délais', note: avis.notes.engagements, icon: Clock },
+                            { label: 'Qualité/Prix', note: avis.notes.qualite_prix, icon: Scale },
+                            { label: 'Recommandation', note: avis.notes.recommandation, icon: HeartHandshake },
+                          ].map((crit, cIdx) => {
+                            const CritIcon = crit.icon;
+                            return (
+                              <div
+                                key={cIdx}
+                                className="bg-gradient-to-br from-slate-50 to-sky-50/40 p-2.5 rounded-xl border border-slate-200/80 shadow-2xs flex flex-col justify-between"
+                              >
+                                <div className="flex items-center justify-between text-[11px] mb-1.5">
+                                  <span className="text-slate-600 font-semibold flex items-center gap-1 truncate">
+                                    <CritIcon className="w-3 h-3 text-sky-600 shrink-0" />
+                                    <span className="truncate">{crit.label}</span>
+                                  </span>
+                                  <strong className="text-sky-800 font-black shrink-0 ml-1">{crit.note}/5</strong>
+                                </div>
+                                <div className="w-full h-1 bg-slate-200/80 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-sky-400 to-teal-500 rounded-full"
+                                    style={{ width: `${(crit.note / 5) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
