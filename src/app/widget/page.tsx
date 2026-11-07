@@ -25,6 +25,8 @@ import {
   Sparkle,
   Scale,
   SlidersHorizontal,
+  PenLine,
+  ArrowUpRight,
 } from 'lucide-react';
 
 interface WidgetAvis {
@@ -240,8 +242,13 @@ function WidgetContent() {
     setCanScrollPrev(scrollLeft > 15);
     setCanScrollNext(scrollLeft < scrollWidth - clientWidth - 15);
 
-    const cardWidth = clientWidth >= 640 ? clientWidth / 2 : clientWidth * 0.88;
-    const idx = Math.round(scrollLeft / cardWidth);
+    let cardWidth = clientWidth * 0.86;
+    if (clientWidth >= 1024) {
+      cardWidth = clientWidth / 3;
+    } else if (clientWidth >= 640) {
+      cardWidth = clientWidth / 2;
+    }
+    const idx = Math.round(scrollLeft / Math.max(1, cardWidth));
     setActiveSlideIndex(Math.max(0, Math.min(idx, Math.max(0, filteredAvis.length - 1))));
   };
 
@@ -269,21 +276,39 @@ function WidgetContent() {
 
   const handleScrollPrev = () => {
     if (carouselRef.current) {
-      const step = carouselRef.current.clientWidth >= 640 ? carouselRef.current.clientWidth * 0.85 : carouselRef.current.clientWidth * 0.88;
+      const clientWidth = carouselRef.current.clientWidth;
+      const step =
+        clientWidth >= 1024
+          ? clientWidth * 0.66
+          : clientWidth >= 640
+          ? clientWidth * 0.85
+          : clientWidth * 0.86;
       carouselRef.current.scrollBy({ left: -step, behavior: 'smooth' });
     }
   };
 
   const handleScrollNext = () => {
     if (carouselRef.current) {
-      const step = carouselRef.current.clientWidth >= 640 ? carouselRef.current.clientWidth * 0.85 : carouselRef.current.clientWidth * 0.88;
+      const clientWidth = carouselRef.current.clientWidth;
+      const step =
+        clientWidth >= 1024
+          ? clientWidth * 0.66
+          : clientWidth >= 640
+          ? clientWidth * 0.85
+          : clientWidth * 0.86;
       carouselRef.current.scrollBy({ left: step, behavior: 'smooth' });
     }
   };
 
   const scrollToIndex = (idx: number) => {
     if (carouselRef.current) {
-      const cardWidth = carouselRef.current.clientWidth >= 640 ? carouselRef.current.clientWidth / 2 : carouselRef.current.clientWidth * 0.88;
+      const clientWidth = carouselRef.current.clientWidth;
+      const cardWidth =
+        clientWidth >= 1024
+          ? clientWidth / 3
+          : clientWidth >= 640
+          ? clientWidth / 2
+          : clientWidth * 0.86;
       carouselRef.current.scrollTo({ left: idx * cardWidth, behavior: 'smooth' });
     }
   };
@@ -346,7 +371,7 @@ function WidgetContent() {
   ];
 
   return (
-    <div className="font-sans antialiased bg-transparent p-1 sm:p-2 text-slate-800 max-w-5xl mx-auto w-full max-w-full overflow-x-hidden selection:bg-sky-500 selection:text-white">
+    <div className="font-sans antialiased bg-transparent p-1.5 sm:p-3 text-slate-800 max-w-6xl mx-auto w-full max-w-full overflow-x-hidden selection:bg-sky-500 selection:text-white">
       {/* Balise SEO JSON-LD pour Google Rich Snippets */}
       <script
         type="application/ld+json"
@@ -354,85 +379,102 @@ function WidgetContent() {
       />
 
       {/* ========================================================================= */}
-      {/* 1. EN-TÊTE PRESTIGE & EXCELLENCE PISCINES                                */}
+      {/* 1. EN-TÊTE PRESTIGE & EXCELLENCE PISCINES (RESPONSIVE TOUS ÉCRANS)        */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-br from-white via-slate-50/80 to-sky-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(14,165,233,0.08)] mb-6 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-white via-slate-50/80 to-sky-50/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(14,165,233,0.08)] mb-5 sm:mb-6 relative overflow-hidden">
         {/* Ligne d'accent lumineuse dorée/cyan au sommet */}
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-sky-500 via-teal-400 to-amber-400" />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200/70">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950 text-white text-[11px] font-bold tracking-wider uppercase border border-slate-800 shadow-xs mb-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6 pb-5 sm:pb-6 border-b border-slate-200/70">
+          {/* Bloc Titre, Label AFNOR & Badges de Confiance */}
+          <div className="space-y-2.5 sm:space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950 text-white text-[10px] sm:text-[11px] font-bold tracking-wider uppercase border border-slate-800 shadow-xs">
               <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Avis Clients Certifiés • Norme AFNOR NF Z74-501</span>
             </div>
 
             <div className="space-y-1">
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-sky-600 block">
+              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.2em] text-sky-600 block">
                 Savoir-faire Pisciniste & Aménagements Aquatiques
               </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+              <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
                 {data?.site?.nom || 'Blue 2.0'}
               </h2>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 mt-3.5 text-xs">
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 font-bold px-3 py-1 rounded-xl border border-emerald-200 shadow-2xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs">
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 font-bold px-2.5 sm:px-3 py-1 rounded-xl border border-emerald-200 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>{tauxRecommandation}% de recommandations clients</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-900 font-bold px-3 py-1 rounded-xl border border-sky-200 shadow-2xs">
-                <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0" />
+              <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-900 font-bold px-2.5 sm:px-3 py-1 rounded-xl border border-sky-200 shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
                 <span>Contrôle & Authenticité Garantis</span>
               </span>
             </div>
           </div>
 
-          {/* Plaque Note Globale & Avis de Prestige - Cliquable pour afficher les 6 critères */}
-          <button
-            type="button"
-            onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
-            className="flex items-center gap-5 bg-white/95 hover:bg-white hover:border-sky-300 hover:shadow-md transition-all duration-200 px-6 py-4 rounded-2xl border border-slate-200/90 shadow-sm shrink-0 self-start lg:self-center cursor-pointer text-left group"
-            title={showCriteriaDetail ? 'Masquer le détail des critères' : 'Cliquer pour détailler la note avec les 6 critères'}
-          >
-            <div className="text-left sm:text-right">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-                  {stats?.moyenne_globale ? stats.moyenne_globale.toFixed(1) : '5.0'}
-                </span>
-                <span className="text-base font-bold text-slate-400">/ 5</span>
+          {/* Bloc Actions : Plaque Note Globale + Bouton Facile Questionnaire */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            {/* Plaque Note Globale & Avis de Prestige - Cliquable pour afficher les 6 critères */}
+            <button
+              type="button"
+              onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
+              className="flex items-center justify-between sm:justify-start gap-4 sm:gap-5 bg-white/95 hover:bg-white hover:border-sky-300 hover:shadow-md transition-all duration-200 px-4 py-3 sm:px-5 sm:py-3.5 lg:px-6 lg:py-4 rounded-2xl border border-slate-200/90 shadow-sm cursor-pointer text-left group"
+              title={showCriteriaDetail ? 'Masquer le détail des critères' : 'Cliquer pour détailler la note avec les 6 critères'}
+            >
+              <div className="text-left sm:text-right">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
+                    {stats?.moyenne_globale ? stats.moyenne_globale.toFixed(1) : '5.0'}
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-slate-400">/ 5</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5">
+                  Sur <strong className="font-bold text-slate-800">{stats?.total || rawAvisList.length} avis certifié{(stats?.total || rawAvisList.length) > 1 ? 's' : ''}</strong>
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Sur <strong className="font-bold text-slate-800">{stats?.total || rawAvisList.length} avis certifié{(stats?.total || rawAvisList.length) > 1 ? 's' : ''}</strong>
-              </p>
-            </div>
 
-            <div className="h-10 w-px bg-slate-200 hidden sm:block" />
+              <div className="h-9 sm:h-10 w-px bg-slate-200" />
 
-            <div className="flex flex-col items-start gap-1">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((drop) => {
-                  const active = drop <= Math.round(stats?.moyenne_globale || 5);
-                  return (
-                    <Droplet
-                      key={drop}
-                      className={`w-5 h-5 transition-transform group-hover:scale-110 drop-shadow-xs ${
-                        active ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
-                      }`}
-                    />
-                  );
-                })}
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-0.5 sm:gap-1">
+                  {[1, 2, 3, 4, 5].map((drop) => {
+                    const active = drop <= Math.round(stats?.moyenne_globale || 5);
+                    return (
+                      <Droplet
+                        key={drop}
+                        className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110 drop-shadow-xs ${
+                          active ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-extrabold tracking-widest text-sky-600">
+                    Excellence
+                  </span>
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-full border border-sky-200/70 group-hover:bg-sky-100 transition">
+                    <span>{showCriteriaDetail ? '▲ Masquer' : '▼ 6 critères'}</span>
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase font-extrabold tracking-widest text-sky-600">
-                  Excellence Aquatique
-                </span>
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-full border border-sky-200/70 group-hover:bg-sky-100 transition">
-                  <span>{showCriteriaDetail ? '▲ Masquer' : '▼ 6 critères'}</span>
-                </span>
-              </div>
-            </div>
-          </button>
+            </button>
+
+            {/* Bouton facile d'accès afin de retourner sur le questionnaire */}
+            <a
+              href={`/?site=${encodeURIComponent(siteSlug)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-extrabold text-xs sm:text-sm px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl shadow-md shadow-sky-600/20 hover:shadow-lg hover:shadow-sky-600/30 active:scale-95 transition-all duration-200 touch-manipulation group"
+              title="Accéder au questionnaire pour donner votre avis"
+            >
+              <PenLine className="w-4 h-4 text-sky-200 group-hover:rotate-12 transition-transform shrink-0" />
+              <span>Donner mon avis</span>
+              <ExternalLink className="w-3.5 h-3.5 text-sky-200 opacity-85 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
+            </a>
+          </div>
         </div>
 
         {/* Baromètre de satisfaction détaillé (6 critères) avec fond clair aéré */}
@@ -688,7 +730,7 @@ function WidgetContent() {
               return (
                 <div
                   key={avis.id}
-                  className="w-[88%] sm:w-[calc(50%-10px)] lg:w-[calc(50%-10px)] shrink-0 snap-start bg-white rounded-[28px] p-6 sm:p-7 border border-slate-200/90 shadow-[0_4px_24px_-4px_rgba(14,165,233,0.06)] hover:shadow-[0_12px_36px_-6px_rgba(14,165,233,0.12)] hover:border-sky-300 transition-all duration-300 relative overflow-hidden flex flex-col justify-between group"
+                  className="w-[86%] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-11px)] shrink-0 snap-start bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 lg:p-7 border border-slate-200/90 shadow-[0_4px_24px_-4px_rgba(14,165,233,0.06)] hover:shadow-[0_12px_36px_-6px_rgba(14,165,233,0.12)] hover:border-sky-300 transition-all duration-300 relative overflow-hidden flex flex-col justify-between group"
                 >
                   {/* Filigrane décoratif guillemet en arrière-plan */}
                   <div className="absolute right-4 top-2 text-7xl font-serif text-sky-500/5 select-none pointer-events-none">
@@ -697,22 +739,22 @@ function WidgetContent() {
 
                   <div>
                     {/* Header carte avis */}
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-600 via-teal-500 to-sky-400 text-white font-black text-base flex items-center justify-center shrink-0 shadow-md shadow-sky-500/20">
+                    <div className="flex items-start justify-between gap-2.5 mb-3.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-sky-600 via-teal-500 to-sky-400 text-white font-black text-sm sm:text-base flex items-center justify-center shrink-0 shadow-md shadow-sky-500/20">
                           {avis.prenom ? avis.prenom.charAt(0).toUpperCase() : 'C'}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
                               {avis.prenom} {avis.initiale_nom}
                             </h3>
-                            <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold px-2 py-0.5 rounded-full">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">
+                              <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600" />
                               <span>Vérifié</span>
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-400 font-medium">
+                          <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">
                             {new Date(avis.created_at).toLocaleDateString('fr-FR', {
                               day: 'numeric',
                               month: 'long',
@@ -726,7 +768,7 @@ function WidgetContent() {
                       <button
                         type="button"
                         onClick={() => setExpandedAvisId(isCriteriaExpanded ? null : avis.id)}
-                        className="flex items-center gap-1 bg-sky-50/90 hover:bg-sky-100/90 px-3 py-1.5 rounded-2xl border border-sky-100 hover:border-sky-300 shadow-2xs transition group/badge cursor-pointer"
+                        className="flex items-center gap-0.5 sm:gap-1 bg-sky-50/90 hover:bg-sky-100/90 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl border border-sky-100 hover:border-sky-300 shadow-2xs transition group/badge cursor-pointer shrink-0"
                         title={isCriteriaExpanded ? 'Masquer le détail des notes' : 'Cliquer pour détailler la note (6 critères)'}
                       >
                         {[1, 2, 3, 4, 5].map((d) => (
@@ -885,11 +927,38 @@ function WidgetContent() {
       )}
 
       {/* ========================================================================= */}
-      {/* 4. FOOTER OFFICIEL DU WIDGET                                             */}
+      {/* 4. FOOTER & INVITATION AU QUESTIONNAIRE                                   */}
       {/* ========================================================================= */}
-      <div className="mt-8 pt-5 border-t border-slate-200/80 flex items-center justify-center gap-2.5 text-xs text-slate-500 text-center">
-        <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-        <span>Système d'avis certifié Blue 2.0 • Hébergement sécurisé & données protégées</span>
+      <div className="mt-8 bg-gradient-to-r from-sky-50/70 via-white to-sky-50/70 rounded-2xl p-4 sm:p-5 border border-sky-100 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/20">
+            <MessageSquare className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+              Vous avez un projet réalisé avec {data?.site?.nom || 'Blue 2.0'} ?
+            </h4>
+            <p className="text-[11px] text-slate-500">
+              Votre avis certifié guide nos futurs clients et valorise le travail de nos équipes.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href={`/?site=${encodeURIComponent(siteSlug)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition active:scale-95 shrink-0 w-full sm:w-auto"
+        >
+          <PenLine className="w-3.5 h-3.5 text-sky-400" />
+          <span>Accéder au questionnaire</span>
+          <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+        </a>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-slate-200/60 flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-400 text-center">
+        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+        <span>Système d'avis certifié Blue 2.0 • Norme AFNOR NF Z74-501 • Données protégées</span>
       </div>
 
       {/* ========================================================================= */}
