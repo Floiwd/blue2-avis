@@ -2,20 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  MapPin,
-  User,
   MessageSquare,
   Camera,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Trash2,
-  Sparkles,
-  Info,
   ShieldCheck,
-  Building2,
-  Phone,
-  Mail,
   ChevronDown,
   CloudUpload,
 } from 'lucide-react';
@@ -106,7 +99,7 @@ export function ReviewForm() {
             if (foundSite) {
               setSelectedSiteId(foundSite.id);
               if (collabParam) {
-                const foundCollab = foundSite.collaborateurs.find(
+                const foundCollab = foundSite.collaborateurs?.find(
                   (c: Collaborateur) => c.id === collabParam || c.nom.toLowerCase().includes(collabParam.toLowerCase())
                 );
                 if (foundCollab) {

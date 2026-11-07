@@ -256,6 +256,16 @@ function WidgetContent() {
     return () => ro.disconnect();
   }, [frameId]);
 
+  // Fermeture de la lightbox photo avec la touche Échap
+  useEffect(() => {
+    if (!selectedPhoto) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedPhoto(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPhoto]);
+
   const stats = data?.stats;
   const rawAvisList = data?.avis || [];
 
@@ -713,7 +723,17 @@ function WidgetContent() {
       {/* ========================================================================= */}
       {/* 3. CARROUSEL D'AVIS HAUT DE GAMME                                         */}
       {/* ========================================================================= */}
-      {filteredAvis.length === 0 ? (
+      {rawAvisList.length === 0 ? (
+        <div className="bg-white rounded-3xl p-10 border border-slate-200 text-center text-slate-500 shadow-xs">
+          <div className="w-14 h-14 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-sky-600 border border-sky-100">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <p className="text-base font-bold text-slate-800">Avis certifiés en cours de collecte</p>
+          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+            Les premiers avis vérifiés pour cette agence sont en cours de validation et apparaîtront sous peu.
+          </p>
+        </div>
+      ) : filteredAvis.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 border border-slate-200 text-center text-slate-500 shadow-xs">
           <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-base font-bold text-slate-800">Aucun avis trouvé dans cette catégorie.</p>
@@ -721,7 +741,7 @@ function WidgetContent() {
             onClick={() => setFilterType('all')}
             className="mt-3 text-xs text-sky-600 font-bold hover:underline"
           >
-            Afficher l'ensemble des avis certifiés
+            Afficher l&apos;ensemble des avis certifiés ({rawAvisList.length})
           </button>
         </div>
       ) : (

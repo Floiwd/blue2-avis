@@ -243,8 +243,8 @@ export async function GET(req: NextRequest) {
           s.slug as site_slug, s.nom as site_nom,
           c.nom as collaborateur_nom, c.role as collaborateur_role
         FROM avis a
-        JOIN sites s ON s.id = a.site_id
-        JOIN collaborateurs c ON c.id = a.collaborateur_id
+        LEFT JOIN sites s ON s.id = a.site_id
+        LEFT JOIN collaborateurs c ON c.id = a.collaborateur_id
         WHERE a.statut = 'approuve' 
           AND a.deleted_at IS NULL 
           AND s.slug = ${siteSlug}
@@ -259,8 +259,8 @@ export async function GET(req: NextRequest) {
           s.slug as site_slug, s.nom as site_nom,
           c.nom as collaborateur_nom, c.role as collaborateur_role
         FROM avis a
-        JOIN sites s ON s.id = a.site_id
-        JOIN collaborateurs c ON c.id = a.collaborateur_id
+        LEFT JOIN sites s ON s.id = a.site_id
+        LEFT JOIN collaborateurs c ON c.id = a.collaborateur_id
         WHERE a.statut = 'approuve' 
           AND a.deleted_at IS NULL
         ORDER BY a.created_at DESC

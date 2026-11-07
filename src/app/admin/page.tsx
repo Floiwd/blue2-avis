@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Shield,
   Building,
@@ -32,12 +33,10 @@ import {
   BarChart3,
   Calendar,
   Sparkles,
-  TrendingUp,
   Camera,
   ThumbsUp,
   ArrowLeft,
   Loader2,
-  Upload,
 } from 'lucide-react';
 import { Site, Collaborateur, Avis, CRITERIA } from '@/lib/types';
 import { resolvePhotoUrls, uploadPhotosToR2 } from '@/lib/photo-utils';
@@ -136,12 +135,7 @@ export default function AdminPage() {
   // Client time for safe prerendering in Next.js 16
   const [currentTime, setCurrentTime] = useState<number>(0);
 
-  useEffect(() => {
-    setCurrentTime(Date.now());
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [resAvis, resSites, resCollabs] = await Promise.all([
@@ -168,15 +162,21 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [newCollabSiteId, sendSiteId, widgetSiteSlug]);
 
-  const notifyWidgetUpdate = () => {
+  useEffect(() => {
+    setCurrentTime(Date.now());
+    fetchData();
+  }, [fetchData]);
+
+  const notifyWidgetUpdate = useCallback(() => {
     try {
       const channel = new BroadcastChannel('blue2_avis_channel');
-      channel.postMessage({ type: 'AVIS_UPDATED', timestamp: Date.now() });
+      const now = Date.now();
+      channel.postMessage({ type: 'AVIS_UPDATED', timestamp: now });
       channel.close();
     } catch {}
-  };
+  }, []);
 
   // Actions Avis
   const handleUpdateAvisStatut = async (id: string, statut: 'approuve' | 'masque') => {
@@ -814,14 +814,14 @@ export default function AdminPage() {
           </div>
 
           {/* Bouton Revenir au questionnaire */}
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-white border border-slate-700 hover:border-slate-600 transition text-xs sm:text-sm font-bold shadow-xs active:scale-95 group"
             title="Revenir au formulaire d'avis Blue 2.0"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             <span>Revenir au questionnaire</span>
-          </a>
+          </Link>
         </div>
 
         {/* Tab Navigation */}

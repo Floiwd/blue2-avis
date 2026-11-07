@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
 const ADMIN_COOKIE_NAME = 'blue2_admin_token';
@@ -17,7 +16,7 @@ export function generateAdminToken(): string {
   return `${timestamp}.${hmac}`;
 }
 
-export function verifyAdminToken(token: string | undefined | null): boolean {
+export function verifyAdminToken(_token: string | undefined | null): boolean {
   // Accès libre temporaire
   return true;
 }
