@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Droplet,
@@ -14,6 +14,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Award,
   Maximize2,
   Clock,
@@ -170,6 +172,66 @@ function WidgetContent() {
       return true;
     })
     .slice(0, maxReviews);
+
+  // Carrousel interactif fluide
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(true);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+  const updateCarouselState = () => {
+    if (!carouselRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+    setCanScrollPrev(scrollLeft > 15);
+    setCanScrollNext(scrollLeft < scrollWidth - clientWidth - 15);
+
+    const cardWidth = clientWidth >= 640 ? clientWidth / 2 : clientWidth * 0.88;
+    const idx = Math.round(scrollLeft / cardWidth);
+    setActiveSlideIndex(Math.max(0, Math.min(idx, filteredAvis.length - 1)));
+  };
+
+  useEffect(() => {
+    updateCarouselState();
+    const el = carouselRef.current;
+    if (el) {
+      el.addEventListener('scroll', updateCarouselState, { passive: true });
+      window.addEventListener('resize', updateCarouselState);
+      return () => {
+        el.removeEventListener('scroll', updateCarouselState);
+        window.removeEventListener('resize', updateCarouselState);
+      };
+    }
+  }, [filteredAvis]);
+
+  useEffect(() => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+    setActiveSlideIndex(0);
+    setCanScrollPrev(false);
+    setCanScrollNext(filteredAvis.length > 2);
+  }, [filterType, filteredAvis.length]);
+
+  const handleScrollPrev = () => {
+    if (carouselRef.current) {
+      const step = carouselRef.current.clientWidth >= 640 ? carouselRef.current.clientWidth * 0.85 : carouselRef.current.clientWidth * 0.88;
+      carouselRef.current.scrollBy({ left: -step, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollNext = () => {
+    if (carouselRef.current) {
+      const step = carouselRef.current.clientWidth >= 640 ? carouselRef.current.clientWidth * 0.85 : carouselRef.current.clientWidth * 0.88;
+      carouselRef.current.scrollBy({ left: step, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToIndex = (idx: number) => {
+    if (carouselRef.current) {
+      const cardWidth = carouselRef.current.clientWidth >= 640 ? carouselRef.current.clientWidth / 2 : carouselRef.current.clientWidth * 0.88;
+      carouselRef.current.scrollTo({ left: idx * cardWidth, behavior: 'smooth' });
+    }
+  };
 
   // Calcul taux recommandation
   const countRecommandes = rawAvisList.filter((a) => a.notes.recommandation >= 4).length;
@@ -484,7 +546,7 @@ function WidgetContent() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. GRILLE DES CARTES D'AVIS HAUT DE GAMME                                */}
+      {/* 3. CARROUSEL D'AVIS HAUT DE GAMME                                         */}
       {/* ========================================================================= */}
       {filteredAvis.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 border border-slate-200 text-center text-slate-500 shadow-xs">
@@ -498,169 +560,231 @@ function WidgetContent() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredAvis.map((avis) => {
-            const isCriteriaExpanded = expandedAvisId === avis.id;
+        <div className="space-y-4">
+          {/* Barre d'en-tête du carrousel avec flèches de navigation */}
+          <div className="flex items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-800">
+                {filteredAvis.length} avis certifié{filteredAvis.length > 1 ? 's' : ''}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                Faites glisser horizontalement
+              </span>
+            </div>
 
-            return (
-              <div
-                key={avis.id}
-                className="bg-white rounded-[28px] p-6 sm:p-7 border border-slate-200/90 shadow-[0_4px_24px_-4px_rgba(14,165,233,0.06)] hover:shadow-[0_12px_36px_-6px_rgba(14,165,233,0.12)] hover:border-sky-300 transition-all duration-300 relative overflow-hidden flex flex-col justify-between group"
-              >
-                {/* Filigrane décoratif guillemet en arrière-plan */}
-                <div className="absolute right-4 top-2 text-7xl font-serif text-sky-500/5 select-none pointer-events-none">
-                  “
-                </div>
+            {filteredAvis.length > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleScrollPrev}
+                  disabled={!canScrollPrev}
+                  aria-label="Avis précédent"
+                  className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 text-slate-700 flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs active:scale-95 touch-manipulation"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleScrollNext}
+                  disabled={!canScrollNext}
+                  aria-label="Avis suivant"
+                  className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 text-slate-700 flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs active:scale-95 touch-manipulation"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
 
-                <div>
-                  {/* Header carte avis */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-600 via-teal-500 to-sky-400 text-white font-black text-base flex items-center justify-center shrink-0 shadow-md shadow-sky-500/20">
-                        {avis.prenom ? avis.prenom.charAt(0).toUpperCase() : 'C'}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
-                            {avis.prenom} {avis.initiale_nom}
-                          </h3>
-                          <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Vérifié</span>
-                          </span>
+          {/* Rail défilant du Carrousel avec Touch Snap */}
+          <div
+            ref={carouselRef}
+            className="flex gap-4 sm:gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 pt-1 px-1 scrollbar-none touch-pan-x"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {filteredAvis.map((avis) => {
+              const isCriteriaExpanded = expandedAvisId === avis.id;
+
+              return (
+                <div
+                  key={avis.id}
+                  className="w-[88%] sm:w-[calc(50%-10px)] lg:w-[calc(50%-10px)] shrink-0 snap-start bg-white rounded-[28px] p-6 sm:p-7 border border-slate-200/90 shadow-[0_4px_24px_-4px_rgba(14,165,233,0.06)] hover:shadow-[0_12px_36px_-6px_rgba(14,165,233,0.12)] hover:border-sky-300 transition-all duration-300 relative overflow-hidden flex flex-col justify-between group"
+                >
+                  {/* Filigrane décoratif guillemet en arrière-plan */}
+                  <div className="absolute right-4 top-2 text-7xl font-serif text-sky-500/5 select-none pointer-events-none">
+                    “
+                  </div>
+
+                  <div>
+                    {/* Header carte avis */}
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-600 via-teal-500 to-sky-400 text-white font-black text-base flex items-center justify-center shrink-0 shadow-md shadow-sky-500/20">
+                          {avis.prenom ? avis.prenom.charAt(0).toUpperCase() : 'C'}
                         </div>
-                        <p className="text-[11px] text-slate-400 font-medium">
-                          {new Date(avis.created_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })}
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                              {avis.prenom} {avis.initiale_nom}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-bold px-2 py-0.5 rounded-full">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Vérifié</span>
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 font-medium">
+                            {new Date(avis.created_at).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Note en gouttes lagon */}
+                      <div className="flex items-center gap-1 bg-sky-50/90 px-3 py-1.5 rounded-2xl border border-sky-100 shadow-2xs">
+                        {[1, 2, 3, 4, 5].map((d) => (
+                          <Droplet
+                            key={d}
+                            className={`w-3.5 h-3.5 ${
+                              d <= Math.round(avis.notes.moyenne)
+                                ? 'text-sky-500 fill-sky-500 drop-shadow-[0_1px_3px_rgba(14,165,233,0.3)]'
+                                : 'text-slate-200 fill-slate-100'
+                            }`}
+                          />
+                        ))}
+                        <span className="text-xs font-black text-sky-900 ml-1">
+                          {avis.notes.moyenne.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Prestation & Collaborateur */}
+                    <div className="flex flex-wrap items-center gap-2 mb-3.5">
+                      {avis.intitule_prestation && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50/80 border border-sky-200/60 text-sky-900 text-xs font-semibold rounded-xl">
+                          <span>🏊</span>
+                          <span>{avis.intitule_prestation}</span>
+                        </span>
+                      )}
+                      {avis.collaborateur && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-xl">
+                          <span>👤</span>
+                          <span>Conseillé par <strong className="font-bold text-slate-900">{avis.collaborateur.nom}</strong></span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Commentaire client */}
+                    {avis.commentaire && (
+                      <div className="relative mb-4">
+                        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic bg-gradient-to-b from-slate-50/90 to-sky-50/30 p-4 rounded-2xl border border-slate-100">
+                          "{avis.commentaire}"
                         </p>
                       </div>
-                    </div>
-
-                    {/* Note en gouttes lagon */}
-                    <div className="flex items-center gap-1 bg-sky-50/90 px-3 py-1.5 rounded-2xl border border-sky-100 shadow-2xs">
-                      {[1, 2, 3, 4, 5].map((d) => (
-                        <Droplet
-                          key={d}
-                          className={`w-3.5 h-3.5 ${
-                            d <= Math.round(avis.notes.moyenne)
-                              ? 'text-sky-500 fill-sky-500 drop-shadow-[0_1px_3px_rgba(14,165,233,0.3)]'
-                              : 'text-slate-200 fill-slate-100'
-                          }`}
-                        />
-                      ))}
-                      <span className="text-xs font-black text-sky-900 ml-1">
-                        {avis.notes.moyenne.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Prestation & Collaborateur */}
-                  <div className="flex flex-wrap items-center gap-2 mb-3.5">
-                    {avis.intitule_prestation && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50/80 border border-sky-200/60 text-sky-900 text-xs font-semibold rounded-xl">
-                        <span>🏊</span>
-                        <span>{avis.intitule_prestation}</span>
-                      </span>
                     )}
-                    {avis.collaborateur && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-xl">
-                        <span>👤</span>
-                        <span>Conseillé par <strong className="font-bold text-slate-900">{avis.collaborateur.nom}</strong></span>
-                      </span>
-                    )}
-                  </div>
 
-                  {/* Commentaire client */}
-                  {avis.commentaire && (
-                    <div className="relative mb-4">
-                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic bg-gradient-to-b from-slate-50/90 to-sky-50/30 p-4 rounded-2xl border border-slate-100">
-                        "{avis.commentaire}"
-                      </p>
+                    {/* Accordéon micro-notes de ce client */}
+                    <div className="mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAvisId(isCriteriaExpanded ? null : avis.id)}
+                        className="text-[11px] font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1 transition"
+                      >
+                        <span>{isCriteriaExpanded ? 'Masquer le détail des 6 notes' : 'Détail des 6 critères attribués par ce client'}</span>
+                        {isCriteriaExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {isCriteriaExpanded && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 animate-in fade-in duration-150">
+                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
+                            <span className="text-slate-500">Conseil :</span>
+                            <strong className="text-sky-700">{avis.notes.conseil}/5</strong>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
+                            <span className="text-slate-500">Choix :</span>
+                            <strong className="text-sky-700">{avis.notes.diversite}/5</strong>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
+                            <span className="text-slate-500">Propreté :</span>
+                            <strong className="text-sky-700">{avis.notes.proprete}/5</strong>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
+                            <span className="text-slate-500">Délais :</span>
+                            <strong className="text-sky-700">{avis.notes.engagements}/5</strong>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
+                            <span className="text-slate-500">Qualité/Prix :</span>
+                            <strong className="text-sky-700">{avis.notes.qualite_prix}/5</strong>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
+                            <span className="text-slate-500">Recommandation :</span>
+                            <strong className="text-sky-700">{avis.notes.recommandation}/5</strong>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {/* Accordéon micro-notes de ce client */}
-                  <div className="mb-3">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedAvisId(isCriteriaExpanded ? null : avis.id)}
-                      className="text-[11px] font-bold text-sky-700 hover:text-sky-800 flex items-center gap-1 transition"
-                    >
-                      <span>{isCriteriaExpanded ? 'Masquer le détail des 6 notes' : 'Détail des 6 critères attribués par ce client'}</span>
-                      {isCriteriaExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </button>
-
-                    {isCriteriaExpanded && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 animate-in fade-in duration-150">
-                        <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                          <span className="text-slate-500">Conseil :</span>
-                          <strong className="text-sky-700">{avis.notes.conseil}/5</strong>
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                          <span className="text-slate-500">Choix :</span>
-                          <strong className="text-sky-700">{avis.notes.diversite}/5</strong>
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                          <span className="text-slate-500">Propreté :</span>
-                          <strong className="text-sky-700">{avis.notes.proprete}/5</strong>
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                          <span className="text-slate-500">Délais :</span>
-                          <strong className="text-sky-700">{avis.notes.engagements}/5</strong>
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                          <span className="text-slate-500">Qualité/Prix :</span>
-                          <strong className="text-sky-700">{avis.notes.qualite_prix}/5</strong>
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded-xl text-[11px] flex justify-between border border-slate-100">
-                          <span className="text-slate-500">Recommandation :</span>
-                          <strong className="text-sky-700">{avis.notes.recommandation}/5</strong>
+                    {/* Galerie Photos avec conversion WebP HD */}
+                    {avis.photos && avis.photos.length > 0 && (
+                      <div className="pt-2">
+                        <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5 mb-2.5">
+                          <Camera className="w-3.5 h-3.5 text-sky-600" />
+                          <span>Photos du chantier ({avis.photos.length})</span>
+                        </span>
+                        <div className="flex flex-wrap gap-2.5">
+                          {avis.photos.map((photo, pIdx) => (
+                            <button
+                              key={pIdx}
+                              type="button"
+                              onClick={() => setSelectedPhoto(photo.original || photo.thumbnail)}
+                              className="group relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-200 hover:border-sky-500 transition-all duration-200 shrink-0 active:scale-95 shadow-xs"
+                              title="Agrandir la photo de chantier en haute résolution"
+                            >
+                              <img
+                                src={photo.thumbnail || photo.original}
+                                alt="Photo chantier client"
+                                className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                                loading="lazy"
+                              />
+                              {/* Overlay avec icône loupe */}
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 className="w-5 h-5 text-white drop-shadow" />
+                              </div>
+                              <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] font-mono font-bold px-1 py-0.5 rounded">
+                                HD
+                              </span>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Galerie Photos avec conversion WebP HD */}
-                  {avis.photos && avis.photos.length > 0 && (
-                    <div className="pt-2">
-                      <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5 mb-2.5">
-                        <Camera className="w-3.5 h-3.5 text-sky-600" />
-                        <span>Photos du chantier ({avis.photos.length})</span>
-                      </span>
-                      <div className="flex flex-wrap gap-2.5">
-                        {avis.photos.map((photo, pIdx) => (
-                          <button
-                            key={pIdx}
-                            type="button"
-                            onClick={() => setSelectedPhoto(photo.original || photo.thumbnail)}
-                            className="group relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-200 hover:border-sky-500 transition-all duration-200 shrink-0 active:scale-95 shadow-xs"
-                            title="Agrandir la photo de chantier en haute résolution"
-                          >
-                            <img
-                              src={photo.thumbnail || photo.original}
-                              alt="Photo chantier client"
-                              className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                              loading="lazy"
-                            />
-                            {/* Overlay avec icône loupe */}
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Maximize2 className="w-5 h-5 text-white drop-shadow" />
-                            </div>
-                            <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] font-mono font-bold px-1 py-0.5 rounded">
-                              HD
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Indicateur de pagination à puces */}
+          {filteredAvis.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5 pt-2">
+              {filteredAvis.map((_, dotIdx) => (
+                <button
+                  key={dotIdx}
+                  type="button"
+                  onClick={() => scrollToIndex(dotIdx)}
+                  aria-label={`Aller à l'avis ${dotIdx + 1}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    dotIdx === activeSlideIndex
+                      ? 'w-6 bg-sky-600'
+                      : 'w-2 bg-slate-200 hover:bg-slate-300'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
