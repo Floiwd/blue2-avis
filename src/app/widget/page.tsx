@@ -85,6 +85,8 @@ function WidgetContent() {
   const [showCriteriaDetail, setShowCriteriaDetail] = useState(false);
   const [expandedAvisId, setExpandedAvisId] = useState<string | null>(null);
 
+  // Ref du conteneur racine pour calcul exact de la hauteur sans blanc
+  const widgetRootRef = useRef<HTMLDivElement>(null);
   // Carrousel interactif fluide - Hooks TOUJOURS au top level (Règles de React)
   const carouselRef = useRef<HTMLDivElement>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -174,25 +176,39 @@ function WidgetContent() {
     };
   }, [siteSlug]);
 
-  // Transmission automatique de la hauteur réelle au site hôte (Zéro ascenseur sur WordPress / Wix)
+  // Suppression de tout min-height / fond hérité du layout pour supprimer le blanc dans l'iframe
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.minHeight = '0';
+      document.documentElement.style.background = 'transparent';
+      document.body.style.minHeight = '0';
+      document.body.style.background = 'transparent';
+    }
+  }, []);
+
+  // Transmission automatique de la hauteur réelle exacte au site hôte (Zéro espace blanc sur WordPress / Wix)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const notifyParentHeight = () => {
-      const scrollH = document.documentElement.scrollHeight || document.body.scrollHeight;
+      const el = widgetRootRef.current;
+      const height = el
+        ? Math.ceil(el.getBoundingClientRect().height)
+        : (document.documentElement.scrollHeight || document.body.scrollHeight);
+
       window.parent.postMessage(
         {
           type: 'blue2-widget-resize',
           frameId: frameId || undefined,
-          height: scrollH + 20,
+          height: height,
         },
         '*'
       );
     };
 
     notifyParentHeight();
-    const t1 = setTimeout(notifyParentHeight, 250);
-    const t2 = setTimeout(notifyParentHeight, 800);
+    const t1 = setTimeout(notifyParentHeight, 200);
+    const t2 = setTimeout(notifyParentHeight, 600);
     window.addEventListener('resize', notifyParentHeight);
 
     return () => {
@@ -372,29 +388,15 @@ function WidgetContent() {
   ];
 
   return (
-    <div className="font-sans antialiased bg-transparent p-1.5 sm:p-3 text-slate-800 max-w-6xl mx-auto w-full max-w-full overflow-x-hidden selection:bg-sky-500 selection:text-white">
+    <div
+      ref={widgetRootRef}
+      className="font-sans antialiased bg-transparent p-1 sm:p-2 text-slate-800 max-w-6xl mx-auto w-full max-w-full overflow-x-hidden selection:bg-sky-500 selection:text-white"
+    >
       {/* Balise SEO JSON-LD pour Google Rich Snippets */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-
-      {/* Barre d'accès rapide & retour au formulaire */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <a
-          href={`https://blue2-avis.vercel.app/?site=${encodeURIComponent(siteSlug)}`}
-          target="_top"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-xs font-bold text-sky-700 hover:text-sky-900 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 px-3.5 py-2 rounded-xl transition shadow-2xs group"
-          title="Retourner au formulaire de dépôt d'avis"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          <span>Retourner au formulaire</span>
-        </a>
-        <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-          Avis certifiés Blue 2.0
-        </span>
-      </div>
 
       {/* ========================================================================= */}
       {/* 1. EN-TÊTE PRESTIGE & EXCELLENCE PISCINES (RESPONSIVE TOUS ÉCRANS)        */}
@@ -432,9 +434,8 @@ function WidgetContent() {
             </div>
           </div>
 
-          {/* Bloc Actions : Plaque Note Globale + Bouton Facile Questionnaire */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            {/* Plaque Note Globale & Avis de Prestige - Cliquable pour afficher les 6 critères */}
+          {/* Plaque Note Globale & Avis de Prestige - Cliquable pour afficher les 6 critères */}
+          <div className="shrink-0">
             <button
               type="button"
               onClick={() => setShowCriteriaDetail(!showCriteriaDetail)}
@@ -479,18 +480,6 @@ function WidgetContent() {
                 </div>
               </div>
             </button>
-
-            {/* Bouton facile d'accès afin de retourner sur le formulaire */}
-            <a
-              href={`https://blue2-avis.vercel.app/?site=${encodeURIComponent(siteSlug)}`}
-              target="_top"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-extrabold text-xs sm:text-sm px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl shadow-md shadow-sky-600/20 hover:shadow-lg hover:shadow-sky-600/30 active:scale-95 transition-all duration-200 touch-manipulation group"
-              title="Retourner au formulaire pour donner votre avis"
-            >
-              <ArrowLeft className="w-4 h-4 text-sky-200 group-hover:-translate-x-0.5 transition-transform shrink-0" />
-              <span>Retourner au formulaire</span>
-            </a>
           </div>
         </div>
 
@@ -943,38 +932,10 @@ function WidgetContent() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 4. FOOTER & INVITATION AU QUESTIONNAIRE                                   */}
-      {/* ========================================================================= */}
-      <div className="mt-8 bg-gradient-to-r from-sky-50/70 via-white to-sky-50/70 rounded-2xl p-4 sm:p-5 border border-sky-100 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/20">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-              Vous avez un projet réalisé avec {data?.site?.nom || 'Blue 2.0'} ?
-            </h4>
-            <p className="text-[11px] text-slate-500">
-              Votre avis certifié guide nos futurs clients et valorise le travail de nos équipes.
-            </p>
-          </div>
-        </div>
-
-        <a
-          href={`https://blue2-avis.vercel.app/?site=${encodeURIComponent(siteSlug)}`}
-          target="_top"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition active:scale-95 shrink-0 w-full sm:w-auto"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 text-sky-400 group-hover:-translate-x-0.5 transition-transform" />
-          <span>Retourner au formulaire</span>
-        </a>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-slate-200/60 flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-400 text-center">
+      {/* Label de certification discret sans espace blanc ni bouton */}
+      <div className="mt-3 pt-2 flex flex-wrap items-center justify-center gap-2 text-[10px] sm:text-[11px] text-slate-400 text-center">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-        <span>Système d'avis certifié Blue 2.0 • Norme AFNOR NF Z74-501 • Données protégées</span>
+        <span>Avis clients certifiés Blue 2.0 • Norme AFNOR NF Z74-501 • Données protégées</span>
       </div>
 
       {/* ========================================================================= */}

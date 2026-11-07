@@ -35,6 +35,7 @@ import {
   TrendingUp,
   Camera,
   ThumbsUp,
+  ArrowLeft,
 } from 'lucide-react';
 import { Site, Collaborateur, Avis, CRITERIA } from '@/lib/types';
 import { resolvePhotoUrls } from '@/lib/photo-utils';
@@ -674,6 +675,16 @@ export default function AdminPage() {
               </span>
             </div>
           </div>
+
+          {/* Bouton Revenir au questionnaire */}
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-white border border-slate-700 hover:border-slate-600 transition text-xs sm:text-sm font-bold shadow-xs active:scale-95 group"
+            title="Revenir au formulaire d'avis Blue 2.0"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Revenir au questionnaire</span>
+          </a>
         </div>
 
         {/* Tab Navigation */}
@@ -2314,7 +2325,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(
-                        `<iframe src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}" width="100%" height="700" style="border:none;border-radius:16px;overflow:hidden;" title="Avis Clients Blue 2.0"></iframe>`
+                        `<iframe src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}" width="100%" height="480" style="border:none;border-radius:16px;overflow:hidden;" title="Avis Clients Blue 2.0"></iframe>`
                       );
                       alert('Code Iframe copié dans le presse-papier !');
                     }}
@@ -2325,7 +2336,7 @@ export default function AdminPage() {
                   </button>
                 </div>
                 <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[11px] text-sky-300 overflow-x-auto">
-                  <code>{`<iframe src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}" width="100%" height="700" style="border:none;border-radius:16px;overflow:hidden;" title="Avis Clients Blue 2.0"></iframe>`}</code>
+                  <code>{`<iframe src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}" width="100%" height="480" style="border:none;border-radius:16px;overflow:hidden;" title="Avis Clients Blue 2.0"></iframe>`}</code>
                 </div>
               </div>
 
@@ -2495,7 +2506,7 @@ export function ReviewsWidget() {
       <iframe
         src="https://blue2-avis.vercel.app/widget?site=${widgetSiteSlug}"
         width="100%"
-        height="720"
+        height="480"
         style={{ border: 'none', borderRadius: '20px', overflow: 'hidden' }}
         title="Avis Clients Protech Piscine"
         loading="lazy"
