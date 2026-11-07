@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   PenLine,
   ArrowUpRight,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface WidgetAvis {
@@ -378,6 +379,23 @@ function WidgetContent() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
+      {/* Barre d'accès rapide & retour au formulaire */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <a
+          href={`https://blue2-avis.vercel.app/?site=${encodeURIComponent(siteSlug)}`}
+          target="_top"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-xs font-bold text-sky-700 hover:text-sky-900 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 px-3.5 py-2 rounded-xl transition shadow-2xs group"
+          title="Retourner au formulaire de dépôt d'avis"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Retourner au formulaire</span>
+        </a>
+        <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+          Avis certifiés Blue 2.0
+        </span>
+      </div>
+
       {/* ========================================================================= */}
       {/* 1. EN-TÊTE PRESTIGE & EXCELLENCE PISCINES (RESPONSIVE TOUS ÉCRANS)        */}
       {/* ========================================================================= */}
@@ -462,17 +480,16 @@ function WidgetContent() {
               </div>
             </button>
 
-            {/* Bouton facile d'accès afin de retourner sur le questionnaire */}
+            {/* Bouton facile d'accès afin de retourner sur le formulaire */}
             <a
-              href={`/?site=${encodeURIComponent(siteSlug)}`}
-              target="_blank"
+              href={`https://blue2-avis.vercel.app/?site=${encodeURIComponent(siteSlug)}`}
+              target="_top"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-sky-600 via-sky-500 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-extrabold text-xs sm:text-sm px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl shadow-md shadow-sky-600/20 hover:shadow-lg hover:shadow-sky-600/30 active:scale-95 transition-all duration-200 touch-manipulation group"
-              title="Accéder au questionnaire pour donner votre avis"
+              title="Retourner au formulaire pour donner votre avis"
             >
-              <PenLine className="w-4 h-4 text-sky-200 group-hover:rotate-12 transition-transform shrink-0" />
-              <span>Donner mon avis</span>
-              <ExternalLink className="w-3.5 h-3.5 text-sky-200 opacity-85 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
+              <ArrowLeft className="w-4 h-4 text-sky-200 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+              <span>Retourner au formulaire</span>
             </a>
           </div>
         </div>
@@ -945,14 +962,13 @@ function WidgetContent() {
         </div>
 
         <a
-          href={`/?site=${encodeURIComponent(siteSlug)}`}
-          target="_blank"
+          href={`https://blue2-avis.vercel.app/?site=${encodeURIComponent(siteSlug)}`}
+          target="_top"
           rel="noopener noreferrer"
           className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition active:scale-95 shrink-0 w-full sm:w-auto"
         >
-          <PenLine className="w-3.5 h-3.5 text-sky-400" />
-          <span>Accéder au questionnaire</span>
-          <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+          <ArrowLeft className="w-3.5 h-3.5 text-sky-400 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Retourner au formulaire</span>
         </a>
       </div>
 
