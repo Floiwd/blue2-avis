@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedAdmin } from '@/lib/auth-admin';
+import { deleteR2Object } from '@/lib/r2';
 import {
   getDb,
   isDbConfigured,
@@ -43,6 +44,67 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ avis: rows || [], count: rows?.length || 0 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Error fetching admin avis';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const isAuth = await isAuthenticatedAdmin();
+  if (!isAuth) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const emptyTrash = searchParams.get('empty_trash');
+
+  if (emptyTrash !== 'true') {
+    return NextResponse.json({ error: 'Paramètre manquant (empty_trash=true requis)' }, { status: 400 });
+  }
+
+  if (!isDbConfigured()) {
+    return NextResponse.json({ success: true, count: 0, message: 'Corbeille vidée (mode démo)' });
+  }
+
+  try {
+    const sql = getDb();
+    if (!sql) throw new Error('Database client unavailable');
+
+    // Récupérer les photos des avis dans la corbeille pour nettoyage Cloudflare R2
+    const deletedAvisRows = await sql`
+      SELECT photos FROM avis WHERE deleted_at IS NOT NULL
+    `;
+    for (const row of deletedAvisRows) {
+      if (Array.isArray(row.photos)) {
+        for (const p of row.photos) {
+          let origKey = '';
+          let thumbKey = '';
+          if (typeof p === 'string') {
+            try {
+              const parsed = JSON.parse(p);
+              origKey = parsed.original || parsed.thumbnail || p;
+              thumbKey = parsed.thumbnail || parsed.original || p;
+            } catch {
+              origKey = p;
+              thumbKey = p;
+            }
+          } else if (typeof p === 'object' && p !== null) {
+            const obj = p as { original?: string; thumbnail?: string };
+            origKey = obj.original || '';
+            thumbKey = obj.thumbnail || '';
+          }
+          if (origKey) await deleteR2Object(origKey);
+          if (thumbKey && thumbKey !== origKey) await deleteR2Object(thumbKey);
+        }
+      }
+    }
+
+    const result = await sql`
+      DELETE FROM avis WHERE deleted_at IS NOT NULL RETURNING id
+    `;
+
+    return NextResponse.json({ success: true, count: result.length, message: 'Corbeille vidée avec succès' });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Error emptying trash';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedAdmin } from '@/lib/auth-admin';
 import { getDb, isDbConfigured } from '@/lib/db';
+import { deleteR2Object } from '@/lib/r2';
 
 export async function PATCH(
   req: NextRequest,
@@ -153,8 +154,36 @@ export async function DELETE(
     const sql = getDb();
     if (!sql) throw new Error('Database client unavailable');
 
+    // Nettoyage préalable des photos Cloudflare R2 associées à cet avis
+    const rows = await sql`SELECT photos FROM avis WHERE id = ${id}`;
+    if (rows.length > 0 && rows[0].photos) {
+      const photos = rows[0].photos;
+      if (Array.isArray(photos)) {
+        for (const p of photos) {
+          let origKey = '';
+          let thumbKey = '';
+          if (typeof p === 'string') {
+            try {
+              const parsed = JSON.parse(p);
+              origKey = parsed.original || parsed.thumbnail || p;
+              thumbKey = parsed.thumbnail || parsed.original || p;
+            } catch {
+              origKey = p;
+              thumbKey = p;
+            }
+          } else if (typeof p === 'object' && p !== null) {
+            const obj = p as { original?: string; thumbnail?: string };
+            origKey = obj.original || '';
+            thumbKey = obj.thumbnail || '';
+          }
+          if (origKey) await deleteR2Object(origKey);
+          if (thumbKey && thumbKey !== origKey) await deleteR2Object(thumbKey);
+        }
+      }
+    }
+
     await sql`DELETE FROM avis WHERE id = ${id}`;
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: 'Avis supprimé définitivement' });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Error deleting avis';
     return NextResponse.json({ error: msg }, { status: 500 });

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
@@ -73,4 +73,29 @@ export function getPhotoUrlFromKey(key: string): string {
   // Route proxy Next.js avec URL absolue pour affichage sur d'autres sites (ex: Protech Piscine)
   const appBase = process.env.NEXT_PUBLIC_APP_URL || 'https://blue2-avis.vercel.app';
   return `${appBase.replace(/\/$/, '')}/api/photos/${encodeURIComponent(key)}`;
+}
+
+/**
+ * Supprime un objet de Cloudflare R2
+ */
+export async function deleteR2Object(key: string): Promise<boolean> {
+  if (!isR2Configured() || !key) return false;
+  // Ne pas tenter de supprimer des URLs externes ou data URLs
+  if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:')) {
+    return false;
+  }
+  try {
+    const client = getR2Client();
+    if (!client) return false;
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key.replace(/^\//, ''),
+      })
+    );
+    return true;
+  } catch (err) {
+    console.warn(`Failed to delete R2 object ${key}:`, err);
+    return false;
+  }
 }

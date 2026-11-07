@@ -237,6 +237,60 @@ export default function AdminPage() {
     }
   };
 
+  const handlePermanentDeleteAvis = async (id: string) => {
+    if (
+      !confirm(
+        '⚠️ Attention : Voulez-vous supprimer DÉFINITIVEMENT cet avis de la base de données ?\n\nCette action est irréversible et supprimera également toutes les photos associées.'
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/avis/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setAvisList((prev) => prev.filter((a) => a.id !== id));
+        notifyWidgetUpdate();
+        alert('L\'avis a été supprimé définitivement avec succès.');
+        fetchData();
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || 'Erreur lors de la suppression définitive');
+      }
+    } catch {
+      alert('Erreur réseau lors de la suppression définitive');
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    const count = avisList.filter((a) => Boolean(a.deleted_at)).length;
+    if (count === 0) return;
+    if (
+      !confirm(
+        `⚠️ ATTENTION : Vous êtes sur le point de vider la corbeille et de supprimer DÉFINITIVEMENT les ${count} avis ainsi que leurs photos hébergées.\n\nCette action est irréversible. Confirmez-vous la purge totale ?`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/avis?empty_trash=true', {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setAvisList((prev) => prev.filter((a) => !a.deleted_at));
+        notifyWidgetUpdate();
+        alert('La corbeille a été vidée définitivement avec succès.');
+        fetchData();
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || 'Erreur lors du vidage de la corbeille');
+      }
+    } catch {
+      alert('Erreur réseau lors du vidage de la corbeille');
+    }
+  };
+
   // Actions Avis (Modification complète & Photos)
   const handleStartEditAvis = (avis: Avis) => {
     setEditingAvis(avis);
@@ -1421,16 +1475,28 @@ export default function AdminPage() {
 
             {/* Bannière explicative pour la Corbeille */}
             {filterStatut === 'corbeille' && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-900 text-xs">
-                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-sm text-rose-950 mb-0.5">
-                    Corbeille de rétention (7 jours)
-                  </p>
-                  <p className="text-rose-700 leading-relaxed">
-                    Les avis supprimés sont conservés ici pendant 1 semaine avant purge définitive. Vous pouvez les restaurer d'un simple clic sur le bouton vert <strong>« Restaurer l'avis »</strong> à tout moment.
-                  </p>
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-900 text-xs">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-sm text-rose-950 mb-0.5">
+                      Corbeille de rétention ({corbeilleAvisList.length} avis)
+                    </p>
+                    <p className="text-rose-700 leading-relaxed">
+                      Les avis supprimés sont conservés ici pendant 1 semaine avant purge automatique. Vous pouvez les restaurer d&apos;un simple clic ou les supprimer définitivement sans attendre.
+                    </p>
+                  </div>
                 </div>
+                {corbeilleAvisList.length > 0 && (
+                  <button
+                    onClick={handleEmptyTrash}
+                    className="shrink-0 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 transition text-xs shadow-xs touch-manipulation self-start sm:self-auto"
+                    title="Supprimer définitivement tous les avis de la corbeille"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Vider la corbeille ({corbeilleAvisList.length})</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -1647,13 +1713,24 @@ export default function AdminPage() {
                       {/* Actions modération */}
                       <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2.5 mt-3">
                         {isDeleted ? (
-                          <button
-                            onClick={() => handleRestoreAvis(avis.id)}
-                            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition touch-manipulation"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                            <span>Restaurer l'avis immédiatement</span>
-                          </button>
+                          <div className="w-full flex flex-col sm:flex-row items-center gap-2">
+                            <button
+                              onClick={() => handleRestoreAvis(avis.id)}
+                              className="flex-1 w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition touch-manipulation"
+                              title="Restaurer cet avis et le republier en ligne"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              <span>Restaurer l&apos;avis</span>
+                            </button>
+                            <button
+                              onClick={() => handlePermanentDeleteAvis(avis.id)}
+                              className="w-full sm:w-auto py-2.5 px-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition touch-manipulation shrink-0"
+                              title="Supprimer définitivement cet avis et ses photos de la base"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-600" />
+                              <span>Supprimer définitivement</span>
+                            </button>
+                          </div>
                         ) : (
                           <>
                             {/* Bouton Modifier l'avis (Notes, Photos, Texte, Client) */}
