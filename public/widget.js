@@ -106,22 +106,26 @@
     });
   }
 
-  // 3. Écoute du redimensionnement automatique envoyé par le widget
+  // 3. Écoute du redimensionnement automatique envoyé par le widget (Fix anti-boucle et anti-descente)
   window.addEventListener('message', function (event) {
     if (!event.data || event.data.type !== 'blue2-widget-resize') return;
     var frameId = event.data.frameId;
-    var height = event.data.height;
+    var height = parseInt(event.data.height, 10);
+    if (!height || isNaN(height) || height < 80) return;
+
+    function applyHeight(f) {
+      var current = parseInt(f.style.height || f.offsetHeight || 0, 10);
+      if (Math.abs(current - height) >= 5) {
+        f.style.height = height + 'px';
+      }
+    }
 
     if (frameId) {
       var targetFrame = document.getElementById(frameId);
-      if (targetFrame && height) {
-        targetFrame.style.height = height + 'px';
-      }
+      if (targetFrame) applyHeight(targetFrame);
     } else {
-      var allIframes = document.querySelectorAll('iframe[id^="blue2-iframe-"]');
-      allIframes.forEach(function (f) {
-        if (height) f.style.height = height + 'px';
-      });
+      var allIframes = document.querySelectorAll('iframe[src*="/widget"]');
+      allIframes.forEach(applyHeight);
     }
   });
 

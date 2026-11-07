@@ -87,6 +87,7 @@ function WidgetContent() {
 
   // Ref du conteneur racine pour calcul exact de la hauteur sans blanc
   const widgetRootRef = useRef<HTMLDivElement>(null);
+  const lastSentHeightRef = useRef<number>(0);
   // Carrousel interactif fluide - Hooks TOUJOURS au top level (Règles de React)
   const carouselRef = useRef<HTMLDivElement>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -186,37 +187,74 @@ function WidgetContent() {
     }
   }, []);
 
-  // Transmission automatique de la hauteur réelle exacte au site hôte (Zéro espace blanc sur WordPress / Wix)
+  // Transmission automatique de la hauteur réelle exacte au site hôte (Fix définitif anti-boucle et anti-descente)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const notifyParentHeight = () => {
       const el = widgetRootRef.current;
-      const height = el
-        ? Math.ceil(el.getBoundingClientRect().height)
-        : (document.documentElement.scrollHeight || document.body.scrollHeight);
+      if (!el) return;
 
-      window.parent.postMessage(
-        {
-          type: 'blue2-widget-resize',
-          frameId: frameId || undefined,
-          height: height,
-        },
-        '*'
-      );
+      // Mesure de la hauteur du contenu réel, indépendante de la taille de l'iframe
+      const height = Math.ceil(el.scrollHeight || el.offsetHeight);
+      if (height <= 0) return;
+
+      // Ne renvoyer que si la variation réelle dépasse 5px (casse toute boucle de redimensionnement)
+      if (Math.abs(height - lastSentHeightRef.current) >= 5) {
+        lastSentHeightRef.current = height;
+        window.parent.postMessage(
+          {
+            type: 'blue2-widget-resize',
+            frameId: frameId || undefined,
+            height: height,
+          },
+          '*'
+        );
+      }
     };
 
-    notifyParentHeight();
-    const t1 = setTimeout(notifyParentHeight, 200);
-    const t2 = setTimeout(notifyParentHeight, 600);
-    window.addEventListener('resize', notifyParentHeight);
+    // Recalcul ciblé uniquement lors des modifications de contenu (sans écouteur 'resize' qui boucle)
+    const t1 = setTimeout(notifyParentHeight, 150);
+    const t2 = setTimeout(notifyParentHeight, 500);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      window.removeEventListener('resize', notifyParentHeight);
     };
   }, [data, filterType, showCriteriaDetail, expandedAvisId, frameId]);
+
+  // Recalcul uniquement si la LARGEUR d'écran change (ex: rotation smartphone ou redimensionnement fenêtre)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !widgetRootRef.current) return;
+    let lastWidth = widgetRootRef.current.offsetWidth;
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const newWidth = Math.round(entry.contentRect.width);
+        if (Math.abs(newWidth - lastWidth) > 15) {
+          lastWidth = newWidth;
+          const el = widgetRootRef.current;
+          if (el) {
+            const h = Math.ceil(el.scrollHeight || el.offsetHeight);
+            if (h > 0 && Math.abs(h - lastSentHeightRef.current) >= 5) {
+              lastSentHeightRef.current = h;
+              window.parent.postMessage(
+                {
+                  type: 'blue2-widget-resize',
+                  frameId: frameId || undefined,
+                  height: h,
+                },
+                '*'
+              );
+            }
+          }
+        }
+      }
+    });
+
+    ro.observe(widgetRootRef.current);
+    return () => ro.disconnect();
+  }, [frameId]);
 
   const stats = data?.stats;
   const rawAvisList = data?.avis || [];
