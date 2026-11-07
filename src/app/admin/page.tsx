@@ -142,6 +142,14 @@ export default function AdminPage() {
     }
   };
 
+  const notifyWidgetUpdate = () => {
+    try {
+      const channel = new BroadcastChannel('blue2_avis_channel');
+      channel.postMessage({ type: 'AVIS_UPDATED', timestamp: Date.now() });
+      channel.close();
+    } catch {}
+  };
+
   // Actions Avis
   const handleUpdateAvisStatut = async (id: string, statut: 'approuve' | 'masque') => {
     try {
@@ -154,6 +162,7 @@ export default function AdminPage() {
         setAvisList((prev) =>
           prev.map((a) => (a.id === id ? { ...a, statut } : a))
         );
+        notifyWidgetUpdate();
       }
     } catch {
       alert('Erreur lors de la mise à jour du statut');
@@ -172,6 +181,7 @@ export default function AdminPage() {
         setAvisList((prev) =>
           prev.map((a) => (a.id === id ? { ...a, deleted_at: new Date().toISOString() } : a))
         );
+        notifyWidgetUpdate();
         fetchData();
       }
     } catch {
@@ -190,6 +200,7 @@ export default function AdminPage() {
         setAvisList((prev) =>
           prev.map((a) => (a.id === id ? { ...a, deleted_at: null, statut: 'approuve' } : a))
         );
+        notifyWidgetUpdate();
         alert('Avis restauré avec succès ! Il est de nouveau en ligne.');
         fetchData();
       }

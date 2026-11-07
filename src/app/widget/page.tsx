@@ -82,9 +82,18 @@ function WidgetContent() {
   const [showCriteriaDetail, setShowCriteriaDetail] = useState(false);
   const [expandedAvisId, setExpandedAvisId] = useState<string | null>(null);
 
-  const fetchReviews = async () => {
+  const fetchReviews = async (silent = false) => {
+    if (!silent && !data) {
+      setLoading(true);
+    }
     try {
-      const res = await fetch(`/api/avis?site=${siteSlug}`, { cache: 'no-store' });
+      const res = await fetch(`/api/avis?site=${encodeURIComponent(siteSlug)}&_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -97,9 +106,61 @@ function WidgetContent() {
   };
 
   useEffect(() => {
+    // 1. Chargement initial immédiat
     fetchReviews();
-    const interval = setInterval(fetchReviews, 60000);
-    return () => clearInterval(interval);
+
+    // 2. Polling régulier silencieux toutes les 15 secondes pour actualisation en direct
+    const interval = setInterval(() => {
+      fetchReviews(true);
+    }, 15000);
+
+    // 3. Actualisation immédiate au focus de la fenêtre ou onglet
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchReviews(true);
+      }
+    };
+    const handleFocus = () => fetchReviews(true);
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    // 4. Écoute postMessage depuis le site parent (WordPress, Wix, Webflow, etc.)
+    const handlePostMessage = (event: MessageEvent) => {
+      if (
+        event.data &&
+        (event.data.type === 'blue2-refresh' ||
+          event.data.type === 'reload-reviews' ||
+          event.data.type === 'blue2-reload')
+      ) {
+        fetchReviews(true);
+      }
+    };
+    window.addEventListener('message', handlePostMessage);
+
+    // 5. BroadcastChannel multi-onglets instantané
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('blue2_avis_channel');
+      channel.onmessage = (event) => {
+        if (
+          event.data?.type === 'AVIS_UPDATED' ||
+          event.data?.type === 'NEW_AVIS_SUBMITTED'
+        ) {
+          fetchReviews(true);
+        }
+      };
+    } catch {
+      // Ignorer si BroadcastChannel n'est pas supporté
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('message', handlePostMessage);
+      if (channel) channel.close();
+    };
   }, [siteSlug]);
 
   // Transmission automatique de la hauteur réelle au site hôte (Zéro ascenseur sur WordPress / Wix)

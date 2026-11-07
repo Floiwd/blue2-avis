@@ -352,6 +352,13 @@ export function ReviewForm() {
         throw new Error(data.error || 'Erreur lors de la validation de votre avis.');
       }
 
+      // Notifier immédiatement les widgets ouverts pour mise à jour en temps réel
+      try {
+        const channel = new BroadcastChannel('blue2_avis_channel');
+        channel.postMessage({ type: 'NEW_AVIS_SUBMITTED', timestamp: Date.now() });
+        channel.close();
+      } catch {}
+
       setIsSuccess(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
