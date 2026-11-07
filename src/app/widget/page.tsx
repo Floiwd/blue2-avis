@@ -82,6 +82,12 @@ function WidgetContent() {
   const [showCriteriaDetail, setShowCriteriaDetail] = useState(false);
   const [expandedAvisId, setExpandedAvisId] = useState<string | null>(null);
 
+  // Carrousel interactif fluide - Hooks TOUJOURS au top level (Règles de React)
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(true);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
   const fetchReviews = async (silent = false) => {
     if (!silent && !data) {
       setLoading(true);
@@ -89,10 +95,6 @@ function WidgetContent() {
     try {
       const res = await fetch(`/api/avis?site=${encodeURIComponent(siteSlug)}&_t=${Date.now()}`, {
         cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-        },
       });
       if (res.ok) {
         const json = await res.json();
@@ -116,13 +118,15 @@ function WidgetContent() {
 
     // 3. Actualisation immédiate au focus de la fenêtre ou onglet
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchReviews(true);
       }
     };
     const handleFocus = () => fetchReviews(true);
 
-    window.addEventListener('visibilitychange', handleVisibilityChange);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
     window.addEventListener('focus', handleFocus);
 
     // 4. Écoute postMessage depuis le site parent (WordPress, Wix, Webflow, etc.)
@@ -141,22 +145,26 @@ function WidgetContent() {
     // 5. BroadcastChannel multi-onglets instantané
     let channel: BroadcastChannel | null = null;
     try {
-      channel = new BroadcastChannel('blue2_avis_channel');
-      channel.onmessage = (event) => {
-        if (
-          event.data?.type === 'AVIS_UPDATED' ||
-          event.data?.type === 'NEW_AVIS_SUBMITTED'
-        ) {
-          fetchReviews(true);
-        }
-      };
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('blue2_avis_channel');
+        channel.onmessage = (event) => {
+          if (
+            event.data?.type === 'AVIS_UPDATED' ||
+            event.data?.type === 'NEW_AVIS_SUBMITTED'
+          ) {
+            fetchReviews(true);
+          }
+        };
+      }
     } catch {
-      // Ignorer si BroadcastChannel n'est pas supporté
+      // Ignorer si non supporté ou contexte restreint (ex. iframe Safari)
     }
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('message', handlePostMessage);
       if (channel) channel.close();
@@ -191,15 +199,6 @@ function WidgetContent() {
     };
   }, [data, filterType, showCriteriaDetail, expandedAvisId, frameId]);
 
-  if (loading) {
-    return (
-      <div className="p-12 flex flex-col items-center justify-center font-sans space-y-3">
-        <div className="w-10 h-10 rounded-full border-3 border-sky-200 border-t-sky-600 animate-spin"></div>
-        <p className="text-xs text-slate-400 font-semibold tracking-wide">Chargement des avis certifiés...</p>
-      </div>
-    );
-  }
-
   const stats = data?.stats;
   const rawAvisList = data?.avis || [];
 
@@ -218,7 +217,7 @@ function WidgetContent() {
   };
 
   const countWithPhotos = rawAvisList.filter((a) => a.photos && a.photos.length > 0).length;
-  const count5Stars = rawAvisList.filter((a) => Math.round(a.notes.moyenne) === 5).length;
+  const count5Stars = rawAvisList.filter((a) => Math.round(a.notes?.moyenne ?? 5) === 5).length;
   const countPiscine = rawAvisList.filter(isPiscineAvis).length;
   const countSpa = rawAvisList.filter(isSpaAvis).length;
   const countRenov = rawAvisList.filter(isRenovAvis).length;
@@ -227,19 +226,13 @@ function WidgetContent() {
   const filteredAvis = rawAvisList
     .filter((a) => {
       if (filterType === 'photos') return a.photos && a.photos.length > 0;
-      if (filterType === '5stars') return Math.round(a.notes.moyenne) === 5;
+      if (filterType === '5stars') return Math.round(a.notes?.moyenne ?? 5) === 5;
       if (filterType === 'piscine') return isPiscineAvis(a);
       if (filterType === 'spa') return isSpaAvis(a);
       if (filterType === 'renov') return isRenovAvis(a);
       return true;
     })
     .slice(0, maxReviews);
-
-  // Carrousel interactif fluide
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const [canScrollPrev, setCanScrollPrev] = useState(false);
-  const [canScrollNext, setCanScrollNext] = useState(true);
-  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
   const updateCarouselState = () => {
     if (!carouselRef.current) return;
@@ -249,7 +242,7 @@ function WidgetContent() {
 
     const cardWidth = clientWidth >= 640 ? clientWidth / 2 : clientWidth * 0.88;
     const idx = Math.round(scrollLeft / cardWidth);
-    setActiveSlideIndex(Math.max(0, Math.min(idx, filteredAvis.length - 1)));
+    setActiveSlideIndex(Math.max(0, Math.min(idx, Math.max(0, filteredAvis.length - 1))));
   };
 
   useEffect(() => {
@@ -263,7 +256,7 @@ function WidgetContent() {
         window.removeEventListener('resize', updateCarouselState);
       };
     }
-  }, [filteredAvis]);
+  }, [filteredAvis.length]);
 
   useEffect(() => {
     if (carouselRef.current) {
@@ -296,8 +289,18 @@ function WidgetContent() {
   };
 
   // Calcul taux recommandation
-  const countRecommandes = rawAvisList.filter((a) => a.notes.recommandation >= 4).length;
+  const countRecommandes = rawAvisList.filter((a) => (a.notes?.recommandation ?? 5) >= 4).length;
   const tauxRecommandation = rawAvisList.length > 0 ? Math.round((countRecommandes / rawAvisList.length) * 100) : 100;
+
+  // Si en cours de chargement initial et sans données en mémoire
+  if (loading && !data) {
+    return (
+      <div className="p-12 flex flex-col items-center justify-center font-sans space-y-3">
+        <div className="w-10 h-10 rounded-full border-3 border-sky-200 border-t-sky-600 animate-spin"></div>
+        <p className="text-xs text-slate-400 font-semibold tracking-wide">Chargement des avis certifiés...</p>
+      </div>
+    );
+  }
 
   // Google SEO Structured Data (JSON-LD optimisé Rich Snippets)
   const jsonLd = {
@@ -730,14 +733,14 @@ function WidgetContent() {
                           <Droplet
                             key={d}
                             className={`w-3.5 h-3.5 transition-transform group-hover/badge:scale-110 ${
-                              d <= Math.round(avis.notes.moyenne)
+                              d <= Math.round(avis.notes?.moyenne ?? 5)
                                 ? 'text-sky-500 fill-sky-500 drop-shadow-[0_1px_3px_rgba(14,165,233,0.3)]'
                                 : 'text-slate-200 fill-slate-100'
                             }`}
                           />
                         ))}
                         <span className="text-xs font-black text-sky-900 ml-1">
-                          {avis.notes.moyenne.toFixed(1)}
+                          {avis.notes?.moyenne ? avis.notes.moyenne.toFixed(1) : '5.0'}
                         </span>
                         <ChevronDown
                           className={`w-3 h-3 text-sky-600 transition-transform ml-0.5 ${
@@ -787,12 +790,12 @@ function WidgetContent() {
                       {isCriteriaExpanded && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2.5 animate-in fade-in duration-200">
                           {[
-                            { label: 'Conseil', note: avis.notes.conseil, icon: Compass },
-                            { label: 'Choix', note: avis.notes.diversite, icon: Layers },
-                            { label: 'Propreté', note: avis.notes.proprete, icon: Sparkle },
-                            { label: 'Délais', note: avis.notes.engagements, icon: Clock },
-                            { label: 'Qualité/Prix', note: avis.notes.qualite_prix, icon: Scale },
-                            { label: 'Recommandation', note: avis.notes.recommandation, icon: HeartHandshake },
+                            { label: 'Conseil', note: avis.notes?.conseil ?? 5, icon: Compass },
+                            { label: 'Choix', note: avis.notes?.diversite ?? 5, icon: Layers },
+                            { label: 'Propreté', note: avis.notes?.proprete ?? 5, icon: Sparkle },
+                            { label: 'Délais', note: avis.notes?.engagements ?? 5, icon: Clock },
+                            { label: 'Qualité/Prix', note: avis.notes?.qualite_prix ?? 5, icon: Scale },
+                            { label: 'Recommandation', note: avis.notes?.recommandation ?? 5, icon: HeartHandshake },
                           ].map((crit, cIdx) => {
                             const CritIcon = crit.icon;
                             return (
