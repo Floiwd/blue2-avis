@@ -36,9 +36,11 @@ import {
   Camera,
   ThumbsUp,
   ArrowLeft,
+  Loader2,
+  Upload,
 } from 'lucide-react';
 import { Site, Collaborateur, Avis, CRITERIA } from '@/lib/types';
-import { resolvePhotoUrls } from '@/lib/photo-utils';
+import { resolvePhotoUrls, uploadPhotosToR2 } from '@/lib/photo-utils';
 
 export default function AdminPage() {
   // Navigation
@@ -63,6 +65,31 @@ export default function AdminPage() {
   // Filtres Collaborateurs
   const [collabFilterSite, setCollabFilterSite] = useState<string>('all');
   const [collabSearchTerm, setCollabSearchTerm] = useState<string>('');
+
+  // Modal / Édition Avis complet (Notes, Photos, Textes, Client)
+  const [editingAvis, setEditingAvis] = useState<Avis | null>(null);
+  const [editPrenom, setEditPrenom] = useState('');
+  const [editNom, setEditNom] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editTelephone, setEditTelephone] = useState('');
+  const [editSociete, setEditSociete] = useState('');
+  const [editSiteId, setEditSiteId] = useState('');
+  const [editCollabId, setEditCollabId] = useState('');
+  const [editIntitulePrestation, setEditIntitulePrestation] = useState('');
+  const [editCommentaire, setEditCommentaire] = useState('');
+  const [editNotes, setEditNotes] = useState({
+    note_conseil: 5,
+    note_diversite: 5,
+    note_proprete: 5,
+    note_engagements: 5,
+    note_qualite_prix: 5,
+    note_recommandation: 5,
+  });
+  const [editStatut, setEditStatut] = useState<'approuve' | 'masque' | 'en_attente'>('approuve');
+  const [editPhotos, setEditPhotos] = useState<Array<any>>([]);
+  const [isUploadingEditPhotos, setIsUploadingEditPhotos] = useState(false);
+  const [uploadEditPhotoProgress, setUploadEditPhotoProgress] = useState('');
+  const [isSavingAvis, setIsSavingAvis] = useState(false);
 
   // Modal / Édition Collaborateur
   const [editingCollab, setEditingCollab] = useState<Collaborateur | null>(null);
@@ -207,6 +234,116 @@ export default function AdminPage() {
       }
     } catch {
       alert('Erreur lors de la restauration de l\'avis');
+    }
+  };
+
+  // Actions Avis (Modification complète & Photos)
+  const handleStartEditAvis = (avis: Avis) => {
+    setEditingAvis(avis);
+    setEditPrenom(avis.prenom || '');
+    setEditNom(avis.nom || '');
+    setEditEmail(avis.email || '');
+    setEditTelephone(avis.telephone || '');
+    setEditSociete(avis.societe || '');
+    setEditSiteId(avis.site_id || sites[0]?.id || '');
+    setEditCollabId(avis.collaborateur_id || '');
+    setEditIntitulePrestation(avis.intitule_prestation || '');
+    setEditCommentaire(avis.commentaire || '');
+    setEditNotes({
+      note_conseil: Number(avis.note_conseil) || 5,
+      note_diversite: Number(avis.note_diversite) || 5,
+      note_proprete: Number(avis.note_proprete) || 5,
+      note_engagements: Number(avis.note_engagements) || 5,
+      note_qualite_prix: Number(avis.note_qualite_prix) || 5,
+      note_recommandation: Number(avis.note_recommandation) || 5,
+    });
+    setEditStatut(avis.statut || 'approuve');
+    setEditPhotos(Array.isArray(avis.photos) ? [...avis.photos] : []);
+    setUploadEditPhotoProgress('');
+  };
+
+  const handleDeleteEditPhoto = (idxToRemove: number) => {
+    setEditPhotos((prev) => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const handleUploadNewPhotosForAvis = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (editPhotos.length + files.length > 8) {
+      alert('Limite de 8 photos maximum par avis.');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    setIsUploadingEditPhotos(true);
+    setUploadEditPhotoProgress('Préparation des photos...');
+    try {
+      const uploadedKeys = await uploadPhotosToR2(Array.from(files), (progress) => {
+        setUploadEditPhotoProgress(progress);
+      });
+      setEditPhotos((prev) => [...prev, ...uploadedKeys]);
+      setUploadEditPhotoProgress('');
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'envoi des photos vers Cloudflare R2.');
+    } finally {
+      setIsUploadingEditPhotos(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleSaveEditAvis = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAvis) return;
+
+    if (!editPrenom.trim() || !editNom.trim()) {
+      alert('Le prénom et le nom du client sont obligatoires.');
+      return;
+    }
+
+    setIsSavingAvis(true);
+    try {
+      const res = await fetch(`/api/admin/avis/${editingAvis.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'edit',
+          prenom: editPrenom,
+          nom: editNom,
+          email: editEmail,
+          telephone: editTelephone,
+          societe: editSociete,
+          site_id: editSiteId,
+          collaborateur_id: editCollabId,
+          intitule_prestation: editIntitulePrestation,
+          commentaire: editCommentaire,
+          ...editNotes,
+          photos: editPhotos,
+          statut: editStatut,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Erreur lors de la sauvegarde de l\'avis');
+      }
+
+      const data = await res.json();
+      if (data.avis) {
+        setAvisList((prev) =>
+          prev.map((a) => (a.id === editingAvis.id ? { ...a, ...data.avis } : a))
+        );
+      } else {
+        fetchData();
+      }
+
+      notifyWidgetUpdate();
+      setEditingAvis(null);
+      alert('Avis mis à jour avec succès !');
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la modification de l\'avis');
+    } finally {
+      setIsSavingAvis(false);
     }
   };
 
@@ -1519,38 +1656,376 @@ export default function AdminPage() {
                           </button>
                         ) : (
                           <>
-                            {avis.statut === 'approuve' ? (
-                              <button
-                                onClick={() => handleUpdateAvisStatut(avis.id, 'masque')}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-amber-200 touch-manipulation"
-                              >
-                                <EyeOff className="w-3.5 h-3.5" />
-                                <span>Masquer du public</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleUpdateAvisStatut(avis.id, 'approuve')}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-emerald-200 shadow-xs touch-manipulation"
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                <span>Approuver & Publier</span>
-                              </button>
-                            )}
-
+                            {/* Bouton Modifier l'avis (Notes, Photos, Texte, Client) */}
                             <button
-                              onClick={() => handleSoftDeleteAvis(avis.id)}
-                              className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-rose-200 touch-manipulation shrink-0"
-                              title="Déplacer dans la corbeille (restaurable pendant 7 jours)"
+                              onClick={() => handleStartEditAvis(avis)}
+                              className="flex items-center gap-1.5 text-xs text-sky-700 bg-sky-50 hover:bg-sky-100 px-3.5 py-2.5 sm:py-2 rounded-xl transition font-bold border border-sky-200 touch-manipulation"
+                              title="Modifier les notes, le texte, le client ou ajouter des photos"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Corbeille</span>
+                              <Edit3 className="w-3.5 h-3.5 text-sky-600" />
+                              <span>Modifier l'avis</span>
                             </button>
+
+                            <div className="flex items-center gap-2">
+                              {avis.statut === 'approuve' ? (
+                                <button
+                                  onClick={() => handleUpdateAvisStatut(avis.id, 'masque')}
+                                  className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-xl transition font-bold border border-amber-200 touch-manipulation"
+                                >
+                                  <EyeOff className="w-3.5 h-3.5" />
+                                  <span>Masquer</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpdateAvisStatut(avis.id, 'approuve')}
+                                  className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl transition font-bold border border-emerald-200 shadow-xs touch-manipulation"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  <span>Approuver</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleSoftDeleteAvis(avis.id)}
+                                className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-xl transition font-bold border border-rose-200 touch-manipulation shrink-0"
+                                title="Déplacer dans la corbeille (restaurable pendant 7 jours)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Corbeille</span>
+                              </button>
+                            </div>
                           </>
                         )}
                       </div>
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Modal d'édition complète d'un avis client (Notes, Photos, Texte, Client) */}
+            {editingAvis && (
+              <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-150">
+                <div className="bg-white rounded-3xl p-5 sm:p-7 max-w-2xl w-full shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+                        <Edit3 className="w-5 h-5 text-sky-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
+                          Modifier l'avis client
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                          Client : <strong className="text-slate-700">{editingAvis.prenom} {editingAvis.nom}</strong> • Agence : {sites.find(s => s.id === editingAvis.site_id)?.nom || 'Blue 2.0'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setEditingAvis(null)}
+                      className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition touch-manipulation"
+                      title="Fermer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveEditAvis} className="space-y-5">
+                    {/* Statut de modération */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Statut de publication</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'approuve', label: 'Approuvé (en ligne)', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
+                          { id: 'en_attente', label: 'En attente', color: 'border-amber-500 bg-amber-50 text-amber-800' },
+                          { id: 'masque', label: 'Masqué du public', color: 'border-slate-500 bg-slate-100 text-slate-700' },
+                        ].map((st) => (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => setEditStatut(st.id as any)}
+                            className={`py-2 px-3 text-xs font-bold rounded-xl border text-center transition ${
+                              editStatut === st.id
+                                ? `${st.color} ring-2 ring-offset-1 ring-sky-500 font-black shadow-xs`
+                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Section Coordonnées Client */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Coordonnées du client</span>
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Prénom *</label>
+                          <input
+                            type="text"
+                            value={editPrenom}
+                            onChange={(e) => setEditPrenom(e.target.value)}
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-sky-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nom *</label>
+                          <input
+                            type="text"
+                            value={editNom}
+                            onChange={(e) => setEditNom(e.target.value)}
+                            required
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-sky-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">E-mail</label>
+                          <input
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-sky-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Téléphone</label>
+                          <input
+                            type="tel"
+                            value={editTelephone}
+                            onChange={(e) => setEditTelephone(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-sky-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Société</label>
+                          <input
+                            type="text"
+                            value={editSociete}
+                            onChange={(e) => setEditSociete(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-sky-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section Agence, Collaborateur & Prestation */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Building className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Chantier & Équipe assignée</span>
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Agence Blue 2.0</label>
+                          <select
+                            value={editSiteId}
+                            onChange={(e) => {
+                              setEditSiteId(e.target.value);
+                              const firstCollab = collaborateurs.find((c) => c.site_id === e.target.value);
+                              if (firstCollab) setEditCollabId(firstCollab.id);
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-sky-500"
+                          >
+                            {sites.map((s) => (
+                              <option key={s.id} value={s.id}>{s.nom}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Collaborateur assigné</label>
+                          <select
+                            value={editCollabId}
+                            onChange={(e) => setEditCollabId(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-sky-500"
+                          >
+                            <option value="">Sélectionner un collaborateur...</option>
+                            {collaborateurs
+                              .filter((c) => !editSiteId || c.site_id === editSiteId)
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>{c.nom} ({c.role || 'Conseiller'})</option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">Intitulé de la prestation</label>
+                        <input
+                          type="text"
+                          value={editIntitulePrestation}
+                          onChange={(e) => setEditIntitulePrestation(e.target.value)}
+                          placeholder="Ex: Construction piscine miroir 8x4 avec volet immergé"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-sky-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Section Notes (6 critères) */}
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Droplet className="w-3.5 h-3.5 text-sky-600 fill-sky-600" />
+                          <span>Évaluation détaillée (1 à 5 gouttes d'eau)</span>
+                        </h4>
+                        <span className="text-xs font-black text-sky-700 bg-sky-100 px-2.5 py-1 rounded-full border border-sky-200">
+                          Moyenne : {(Object.values(editNotes).reduce((a, b) => a + b, 0) / 6).toFixed(1)}/5
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {CRITERIA.map((crit) => {
+                          const currentNote = editNotes[crit.key as keyof typeof editNotes] || 5;
+                          return (
+                            <div key={crit.key} className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-bold text-slate-800">{crit.label}</span>
+                                <strong className="text-xs font-extrabold text-sky-700">{currentNote}/5</strong>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((val) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => setEditNotes((prev) => ({ ...prev, [crit.key]: val }))}
+                                    className={`p-1 rounded-lg transition-transform hover:scale-110 active:scale-95 ${
+                                      val <= currentNote ? 'text-sky-500 fill-sky-500' : 'text-slate-200 fill-slate-200'
+                                    }`}
+                                    title={`${val}/5`}
+                                  >
+                                    <Droplet className="w-4 h-4 fill-current" />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Section Commentaire */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Témoignage / Commentaire client</label>
+                      <textarea
+                        value={editCommentaire}
+                        onChange={(e) => setEditCommentaire(e.target.value)}
+                        rows={3}
+                        placeholder="Commentaire ou retour d'expérience du client..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:bg-white focus:outline-sky-500"
+                      />
+                    </div>
+
+                    {/* Section Photos R2 (Suppression + Ajout en direct) */}
+                    <div className="bg-sky-50/50 p-4 rounded-2xl border border-sky-100 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Camera className="w-4 h-4 text-sky-600" />
+                            <span>Photos du chantier ({editPhotos.length}/8)</span>
+                          </h4>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Format WebP optimisé automatiquement • Stockées sur Cloudflare R2
+                          </p>
+                        </div>
+                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-xs transition active:scale-95">
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Ajouter des photos</span>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                            onChange={handleUploadNewPhotosForAvis}
+                            disabled={isUploadingEditPhotos || editPhotos.length >= 8}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {isUploadingEditPhotos && (
+                        <div className="p-3 bg-white rounded-xl border border-sky-200 flex items-center gap-2.5 text-xs text-sky-800 font-bold animate-pulse">
+                          <Loader2 className="w-4 h-4 animate-spin text-sky-600 shrink-0" />
+                          <span>{uploadEditPhotoProgress || 'Optimisation WebP et upload vers Cloudflare R2...'}</span>
+                        </div>
+                      )}
+
+                      {editPhotos.length === 0 ? (
+                        <div className="p-5 bg-white/70 rounded-xl border border-dashed border-sky-200 text-center text-xs text-slate-400">
+                          Aucune photo associée à cet avis. Cliquez sur <strong>« Ajouter des photos »</strong> pour en téléverser.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {editPhotos.map((item, idx) => {
+                            const { thumbnail, original } = resolvePhotoUrls(item);
+                            return (
+                              <div key={idx} className="relative group bg-white rounded-xl overflow-hidden border border-slate-200 shadow-2xs">
+                                <img
+                                  src={thumbnail || original}
+                                  alt={`Photo ${idx + 1}`}
+                                  className="w-full h-24 object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <a
+                                    href={original}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg text-xs font-bold"
+                                    title="Voir en HD"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteEditPhoto(idx)}
+                                    className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold"
+                                    title="Supprimer cette photo"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-mono">
+                                  Photo {idx + 1}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Boutons d'action */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditingAvis(null)}
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingAvis || isUploadingEditPhotos}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white text-xs font-extrabold shadow-md shadow-sky-600/20 transition active:scale-95 disabled:opacity-60 flex items-center gap-2"
+                      >
+                        {isSavingAvis ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Enregistrement en cours...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Enregistrer les modifications</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>
