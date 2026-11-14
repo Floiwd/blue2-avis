@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticatedAdmin } from '@/lib/auth-admin';
 import { getDb, isDbConfigured } from '@/lib/db';
 import { deleteR2Object } from '@/lib/r2';
+import { triggerProtechRevalidation } from '@/lib/protech-revalidate';
+
+type DbSql = NonNullable<ReturnType<typeof getDb>>;
+
+async function getSiteSlugById(sql: DbSql, siteId?: string | null): Promise<string | null> {
+  if (!siteId) return null;
+  try {
+    const siteRows = await sql`SELECT slug FROM sites WHERE id = ${siteId} LIMIT 1`;
+    return typeof siteRows[0]?.slug === 'string' ? siteRows[0].slug : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -41,6 +54,9 @@ export async function PATCH(
         WHERE id = ${id}
         RETURNING *
       `;
+      await triggerProtechRevalidation(
+        await getSiteSlugById(sql, rows[0]?.site_id as string | undefined)
+      );
       return NextResponse.json({ success: true, avis: rows[0] });
     }
 
@@ -52,6 +68,9 @@ export async function PATCH(
         WHERE id = ${id}
         RETURNING *
       `;
+      await triggerProtechRevalidation(
+        await getSiteSlugById(sql, rows[0]?.site_id as string | undefined)
+      );
       return NextResponse.json({ success: true, avis: rows[0] });
     }
 
@@ -114,6 +133,13 @@ export async function PATCH(
         WHERE a.id = ${id}
       `;
 
+      const updatedSiteSlug =
+        enrichedRows[0]?.sites &&
+        typeof (enrichedRows[0].sites as { slug?: unknown }).slug === 'string'
+          ? (enrichedRows[0].sites as { slug: string }).slug
+          : await getSiteSlugById(sql, site_id as string | undefined);
+      await triggerProtechRevalidation(updatedSiteSlug);
+
       return NextResponse.json({ success: true, avis: enrichedRows[0] });
     }
 
@@ -125,6 +151,9 @@ export async function PATCH(
         WHERE id = ${id}
         RETURNING *
       `;
+      await triggerProtechRevalidation(
+        await getSiteSlugById(sql, rows[0]?.site_id as string | undefined)
+      );
       return NextResponse.json({ success: true, avis: rows[0] });
     }
 
@@ -155,7 +184,11 @@ export async function DELETE(
     if (!sql) throw new Error('Database client unavailable');
 
     // Nettoyage préalable des photos Cloudflare R2 associées à cet avis
-    const rows = await sql`SELECT photos FROM avis WHERE id = ${id}`;
+    const rows = await sql`SELECT site_id, photos FROM avis WHERE id = ${id}`;
+    const deletedSiteId =
+      rows.length > 0 && typeof rows[0].site_id === 'string'
+        ? rows[0].site_id
+        : null;
     if (rows.length > 0 && rows[0].photos) {
       const photos = rows[0].photos;
       if (Array.isArray(photos)) {
@@ -183,6 +216,7 @@ export async function DELETE(
     }
 
     await sql`DELETE FROM avis WHERE id = ${id}`;
+    await triggerProtechRevalidation(await getSiteSlugById(sql, deletedSiteId));
     return NextResponse.json({ success: true, message: 'Avis supprimé définitivement' });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Error deleting avis';
